@@ -1,0 +1,13 @@
+Package: feVAR
+Type: Package
+Title: Fixed Effects Vector Autoregressive Models
+Version: 0.1.1
+Date: 2022-05-22
+Author: Alessandro Magrini
+Maintainer: Alessandro Magrini <alessandro.magrini@unifi.it>
+Description: Estimation and analysis of fixed effects vector autoregressive models.
+Depends: R (>= 3.5.0)
+Imports: graphics, stats
+License: GPL-2
+NeedsCompilation: no
+Packaged: 2022-06-08 08:19:21 UTC; Alessandro Magrini
