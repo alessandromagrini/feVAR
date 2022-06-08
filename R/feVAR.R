@@ -502,6 +502,7 @@ regFit <- function(y.name, var.names, nlags, exogenous, data, unit, add.intercep
     }
   mod <- lm(form, data=data)
   mod$call$formula <- form
+  mod$call$data <- NULL
   mod$nlags <- nlags
   mod
   }
@@ -579,17 +580,18 @@ lagCalc <- function(var.names, unit, data, add.intercept) {
     nrow(M)-ncol(M)
     }
   #
+  data <- data[complete.cases(data[,c(unit,var.names)]),]
   if(is.null(unit)) {
     nlags <- nrow(data)-3
     } else {
     nlags <- min(sapply(split(data, data[,unit]),nrow))-3
     }
   df <- dfCalc(nlags)
-  if(df>=3|nlags<=0) fine <- 1 else fine <- 0
+  if(df>=3|nlags<0) fine <- 1 else fine <- 0
   while(fine==0) {
     nlags <- nlags-1
     df <- dfCalc(nlags)
-    if(df>=3|nlags<=0) fine <- 1
+    if(df>=3|nlags<0) fine <- 1
     }
   nlags
   }
@@ -600,7 +602,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(missing(data)) stop("Argument 'data' is missing")
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame")
   if(missing(var.names)) stop("Argument 'var.names' is missing")
-  if(!is.character(var.names) || length(var.names)<1) stop("Argument 'var.names' must be a character vector of length 1 or greater")
+  if(!is.character(var.names) || length(var.names)<2) stop("Argument 'var.names' must be a character vector of length 2 or greater")
   auxchk <- setdiff(var.names,colnames(data))  
   if(length(auxchk)>0) stop("Unknown variable '",auxchk[1],"' in argument 'var.names'")
   #
@@ -609,7 +611,6 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(!is.null(unit)) {
     if(length(setdiff(unit,colnames(data)))>0) stop("Unknown variable '",unit,"' provided to argument 'unit'")
     if(length(intersect(unit,var.names))>0) stop("Variable '",unit,"' appears in both arguments 'var.names' and 'unit'")
-    #if(sum(is.na(data[,unit]))>0) stop("Variable '",unit,"' provided to argument 'unit' contains missing values")
     }
   #
   time <- time[1]
@@ -638,9 +639,6 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(is.na(local.adapt)||(!is.logical(local.adapt)|is.null(local.adapt))) local.adapt <- FALSE 
   quiet <- quiet[1]
   if(is.na(quiet)||(!is.logical(quiet)|is.null(quiet))) quiet <- FALSE
-  #
-  data <- data[complete.cases(data[,c(unit,time,var.names,exogenous)]),]
-  #
   if(!is.null(unit)) data[,unit] <- factor(data[,unit])
   if(!is.null(time)) {
     if(is.null(unit)) {
@@ -655,8 +653,8 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
         }
       }
     }
-  laglim <- lagCalc(var.names=var.names, unit=unit, data=data, add.intercept=add.intercept)
-  if(laglim<=0) stop("Insufficient number of observations")
+  laglim <- lagCalc(var.names=c(var.names,exogenous), unit=unit, data=data, add.intercept=add.intercept)
+  if(laglim<0) stop("Insufficient number of observations")
   if(is.null(nlags)) {
     if(is.null(max.nlags)) {
       max.nlags <- laglim
@@ -667,8 +665,8 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
         } else {
         max.nlags <- round(max.nlags[1])
         }
-      if(max.nlags>laglim|max.nlags<=0) warning("Argument 'max.nlags' has been set to the maximum possible: ",laglim,sep="",call.=F)
-      max.nlags <- max(1,min(max.nlags,laglim))
+      if(max.nlags>laglim|max.nlags<0) warning("Argument 'max.nlags' has been set to the maximum possible: ",laglim,sep="",call.=F)
+      max.nlags <- max(0,min(max.nlags,laglim))
       }
     } else {
     if(!is.numeric(nlags)) {
@@ -677,8 +675,8 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
       } else {
       nlags <- round(nlags[1])
       }
-    if(nlags>laglim|nlags<=0) warning("Argument 'nlags' has been set to the maximum possible: ",laglim,sep="",call.=F)
-    nlags <- max(1,min(nlags,laglim))
+    if(nlags>laglim|nlags<0) warning("Argument 'nlags' has been set to the maximum possible: ",laglim,sep="",call.=F)
+    nlags <- max(0,min(nlags,laglim))
     }
   p <- length(var.names)
   ic <- intersect(tolower(ic),c("bic","hqic","aic"))
@@ -689,6 +687,10 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     penaltyFun <- function(npar,n){2*npar*log(log(n))}
     } else {
     penaltyFun <- function(npar,n){npar*log(n)}
+    }
+  if(max.nlags<1) {
+    max.nlags <- NULL
+    nlags <- 0
     }
   if(is.null(nlags) & !is.null(max.nlags) & local.adapt==F) {
     icval <- c()
@@ -825,9 +827,27 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
   if(!is.numeric(level)) level <- 0.95 else level <- min(c(1,max(c(level,0),na.rm=T)),na.rm=T)
   if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
   if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
-  #
-  ## CHECK ARGUMENTS: unit
-  #
+  if(!is.null(object$call$unit)) {
+    glev <- levels(object$data[,object$call$unit])
+    if(is.null(unit)) {
+      unit <- glev
+      } else {
+      if(is.numeric(unit)) {
+        unit <- intersect(unit,1:length(glev))
+        if(length(unit)==0) {
+          unit <- 1:length(glev)
+          warning("No valid unit IDs in argument 'unit': all units have been taken",call.=F)
+          }
+        unit <- glev[unit]
+        } else {
+        unit <- intersect(unit,glev)
+        if(length(unit)==0) {
+          unit <- glev
+          warning("No valid unit IDs in argument 'unit': all units have been taken",call.=F)
+          }
+        }
+      }
+    }
   if(n.ahead==0) {
     pred <- lapply(object$models, predict, newdata=newdata, interval="prediction", level=level)
     dat0 <- object$data
@@ -949,7 +969,13 @@ residualACF <- function(x, max.lag=NULL, signif=0.05, print=TRUE, plot=TRUE, yli
   res <- residuals(x)
   nomi <- x$call$var.names
   if(is.null(x$call$unit)) {
-    if(is.null(max.lag)) max.lag <- nrow(res)-3
+    lagM <- nrow(res)-3
+    if(is.null(max.lag)|!is.numeric(max.lag)) {
+      max.lag <- lagM
+      } else {
+      max.lag <- max.lag[1]
+      if(max.lag<1|max.lag>lagM) max.lag <- lagM
+      }
     mat <- matrix(nrow=max.lag+1,ncol=length(nomi))
     mat[1,] <- 1
     for(i in 1:length(nomi)) {
@@ -961,7 +987,14 @@ residualACF <- function(x, max.lag=NULL, signif=0.05, print=TRUE, plot=TRUE, yli
       }  
     } else {
     resList <- split(res[,nomi], x$data[,x$call$unit])
-    if(is.null(max.lag)) max.lag <- max(sapply(resList,nrow)-3)
+    lagM <- max(sapply(resList,nrow)-3)
+    if(is.null(max.lag)|!is.numeric(max.lag)) {
+      max.lag <- lagM
+      } else {
+      max.lag <- max.lag[1]
+      if(max.lag<1|max.lag>lagM) max.lag <- lagM
+      }
+    print(max.lag)
     mat <- matrix(nrow=max.lag+1,ncol=length(nomi))
     mat[1,] <- 1
     for(i in 1:length(nomi)) {
@@ -1072,9 +1105,6 @@ spagResid <- function(x, xlab="time point", ylab="residuals", ylim=NULL, titles=
 # graphical diagnostics of residuals
 residualPlot <- function(x, type="ts", max.lag=NULL, signif=0.05, acf.print=TRUE, acf.plot=TRUE,
   cex=0.6, xlab=NULL, ylab=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, las=0, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
-  #
-  ## CHECK ARGUMENTS: max.lag=NULL
-  #
   if(!identical(class(x),"feVAR")) stop("Argument 'x' must be an object of class 'feVAR'")
   add.grid <- add.grid[1]
   if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE 
@@ -1110,18 +1140,20 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, cex=0.6, xlab=NULL, yl
   if(!identical(class(x),"feVAR")) stop("Argument 'x' must be an object of class 'feVAR'")
   if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
   if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
-  if(missing(unit)) {
-    stop("Argument 'unit' is missing")
-    } else {
+  if(!is.null(x$call$unit)) {
+    if(missing(unit)) stop("Argument 'unit' is missing")
     unit <- unit[1]
     if(is.null(unit)||is.na(unit)) stop("Argument 'unit' is missing")
+    glev <- levels(x$data[,x$call$unit])
+    if(is.numeric(unit)) {
+      if((unit%in%c(1:length(glev)))==F) stop("Invalid unit ID '",unit,"' provided to argument 'unit'")
+      unit <- glev[unit]
+      } else {
+      if((unit%in%glev)==F) stop("Unknown unit '",unit,"' provided to argument 'unit'")
+      }
     }
-  glev <- levels(x$data[,x$call$unit])
-  if((unit%in%glev)==F) stop("Unknown unit '",unit,"'")
   add.grid <- add.grid[1]
   if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE
-  #
-  ## CHECK ARGUMENTS: newdata=NULL
   #
   nomi <- x$call$var.names
   opar <- par(no.readonly=T)  
@@ -1144,10 +1176,19 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, cex=0.6, xlab=NULL, yl
       outsam <- outnam <- c()
       }
     dat <- x$data[which(x$data[,x$call$unit] %in% unit),]
-    datnew <- newdata[which(newdata[,x$call$unit] %in% unit),]
+    if(x$call$unit %in% colnames(newdata)) {
+      datnew <- newdata[which(newdata[,x$call$unit] %in% unit),]
+      } else {
+      stop("Variable '",x$call$unit,"' not found in 'newdata'")  
+      }
     }
   n <- nrow(dat)
-  if(!is.null(datnew)&&nrow(datnew)==0) datnew <- NULL
+  if(!is.null(datnew)&&nrow(datnew)==0) {
+    datnew <- NULL
+    } else {
+    auxchk <- setdiff(x$call$var.names,colnames(newdata))
+    if(length(auxchk)>0) stop("Variable '",auxchk[1],"' not found in 'newdata'")
+    }
   if(is.null(x$call$time)) {
     tnam <- 1:n
     } else {
