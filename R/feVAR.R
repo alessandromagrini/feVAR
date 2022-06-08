@@ -13,7 +13,8 @@
 #  - predictPlot
 #
 ## METODI S3: print, summary, coef, fitted, residuals,
-#             logLik, extractAIC, AIC, BIC, predict
+#             logLik, extractAIC, AIC, BIC, predict,
+#             print.unirootTest
 
 
 ###  PREPROCESSING  ###

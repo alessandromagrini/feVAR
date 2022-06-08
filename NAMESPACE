@@ -10,6 +10,7 @@ S3method(logLik, feVAR)
 S3method(extractAIC, feVAR)
 S3method(AIC, feVAR)
 S3method(BIC, feVAR)
+S3method(print, unirootTest)
 
 importFrom("grDevices", "adjustcolor", "n2mfrow")
 importFrom("graphics", "abline", "axis", "box", "grid", "lines", "par", "points", "polygon")
