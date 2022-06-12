@@ -1,6 +1,8 @@
 ## DA FARE
-#  - gestione interna differenze e box.cox
-#  - ricostruzione missing interni
+#  - predictPlot(): far selezionare le variabili
+#  - feVAR(): gestione interna differenze e box.cox
+#             ricostruzione missing interni
+#
 #  - IRF + grafico
 #  - error variance decomposition
 #  - spaghetti plot
@@ -1005,7 +1007,7 @@ residualACF <- function(x, max.lag, signif, print, ylim, xlab, ylab, titles, mar
         mat[j+1,i] <- cor(ires,ires_lag,use="pairwise") 
         }
       }
-    nt <- max(sapply(resList, nrow))
+    nt <- nrow(na.omit(do.call(rbind,lapply(resList,function(z){z[,nomi]}))))
     }
   colnames(mat) <- nomi
   rownames(mat) <- 0:max.lag
