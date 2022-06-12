@@ -1,7 +1,6 @@
 ## DA FARE
-#  - predictPlot(): far selezionare le variabili
 #  - feVAR(): gestione interna differenze e box.cox
-#             ricostruzione missing interni
+#  - feVAR(): gestione missing con EM
 #
 #  - IRF + grafico
 #  - error variance decomposition
@@ -570,27 +569,27 @@ lagMaxCalc <- function(var.names, unit, exogenous, data, add.intercept) {
     } else {
     estr <- paste(exogenous,collapse="+")
     }
-  if(add.intercept) {
-    if(is.null(unit)) {
-      form <- formula(paste("~",estr,sep=""))
-      } else {
-      form <- formula(paste("~",unit,"+",estr,sep=""))
-      }
-    } else {
-    form <- formula(paste("~-1+",estr,sep=""))  
-    }
+  form <- formula(paste("~",estr,sep=""))
   M <- model.matrix(form, data=data)
-  floor((nrow(M)-ncol(M)-3)/length(var.names))
+  if(is.null(unit)) {
+    ng <- 1
+    nk <- ncol(M)-1+1*(add.intercept)
+    } else {
+    ng <- length(split(data,data[,unit]))
+    nk <- ncol(M)-1+ng*(add.intercept)
+    }
+  floor((nrow(M)-nk-3)/(ng+length(var.names)))
   }
  
 # compute default lag length (auxiliary)
 lagCalc <- function(var.names, unit, data) {
   dataOK <- data[complete.cases(data[,c(unit,var.names)]),]
   if(is.null(unit)) {
-    round(10*log10(nrow(dataOK)))
+    nt <- nrow(dataOK)
+    min(nt-3,round(sqrt(nt)))
     } else {
     nt <- sapply(split(dataOK, dataOK[,unit]), nrow)
-    round(10*log10(min(nt)))
+    min(nt-3,round(sqrt(nt)))
     }
   }
 
@@ -668,7 +667,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
         max.nlags <- laglim
         }
       if(max.nlags<1) {
-        warning("Argument 'nlags' has been set to 0",call.=F)
+        if(max.nlags<0) warning("Argument 'nlags' has been set to 0",call.=F)
         max.nlags <- NULL
         nlags <- 0
         }
@@ -965,16 +964,15 @@ BIC.feVAR <- function(object, ...) {
   }
 
 # residual ACF (auxiliary)
-residualACF <- function(x, max.lag, signif, print, ylim, xlab, ylab, titles, mar, mgp, las, ...) {
+residualACF <- function(x, max.lag, signif, acf.print, ylim, xlab, ylab, titles, mar, mgp, las, ...) {
   res <- residuals(x)
   nomi <- x$call$var.names
+  lagM <- lagMaxCalc(var.names=nomi, unit=x$call$unit, exogenous=NULL, data=res, add.intercept=F)
   if(is.null(x$call$unit)) {
-    lagM <- round(10*log10(nrow(res)))
     if(is.null(max.lag)|!is.numeric(max.lag)) {
       max.lag <- lagM
       } else {
-      max.lag <- max.lag[1]
-      if(max.lag<1|max.lag>lagM) max.lag <- lagM
+      max.lag <- max(1,max.lag[1])
       }
     mat <- matrix(nrow=max.lag+1,ncol=length(nomi))
     mat[1,] <- 1
@@ -988,12 +986,10 @@ residualACF <- function(x, max.lag, signif, print, ylim, xlab, ylab, titles, mar
     nt <- nrow(res)
     } else {
     resList <- split(res[,nomi], x$data[,x$call$unit])
-    lagM <- round(10*log10(max(sapply(resList,nrow))))
     if(is.null(max.lag)|!is.numeric(max.lag)) {
       max.lag <- lagM
       } else {
-      max.lag <- max.lag[1]
-      if(max.lag<1|max.lag>lagM) max.lag <- lagM
+      max.lag <- max(1,max.lag[1])
       }
     mat <- matrix(nrow=max.lag+1,ncol=length(nomi))
     mat[1,] <- 1
@@ -1001,10 +997,11 @@ residualACF <- function(x, max.lag, signif, print, ylim, xlab, ylab, titles, mar
       iresList <- lapply(resList,function(z){z[,nomi[i]]})
       ires <- do.call(c,iresList)
       for(j in 1:max.lag) {
-        ires_lag <- do.call(c,lapply(iresList,function(z){
+        ijres_lag <- do.call(c,lapply(iresList,function(z){
           c(rep(NA,j),z)[1:length(z)]
           }))
-        mat[j+1,i] <- cor(ires,ires_lag,use="pairwise") 
+        ijD <- na.omit(cbind(ires,ijres_lag))
+        mat[j+1,i] <- cor(ijD[,1],ijD[,2])
         }
       }
     nt <- nrow(na.omit(do.call(rbind,lapply(resList,function(z){z[,nomi]}))))
@@ -1030,7 +1027,13 @@ residualACF <- function(x, max.lag, signif, print, ylim, xlab, ylab, titles, mar
     #lines(xseq, bsx, lty=2, col=2)
     #lines(xseq, bdx, lty=2, col=2)
     }
-  if(print) matOK
+  if(acf.print) {
+    bpt <- apply(matOK[-1,,drop=F],2,function(z){
+      nt*(nt+2)*cumsum(z^2/(nt-(1:length(z))))
+      })
+    bpt_p <- apply(bpt, 2, function(z){1-pchisq(z,1:nrow(bpt))})
+    list(acf=matOK, statistic=bpt, p.value=round(bpt_p,4))
+    }
   }
 
 # residual qqnorm (auxiliary)
@@ -1118,7 +1121,7 @@ residualPlot <- function(x, type="ts", max.lag=NULL, signif=0.05, acf.print=FALS
     if(is.na(acf.print)||(!is.logical(acf.print)|is.null(acf.print))) acf.print <- TRUE 
     if(is.null(xlab)) xlab <- "lag"
     if(is.null(ylab)) ylab <- "ACF"
-    residualACF(x, max.lag=max.lag, signif=signif, ylim=ylim, xlab=xlab, ylab=ylab, titles=titles, las=las, mar=mar, mgp=mgp, print=acf.print, ...)
+    residualACF(x, max.lag=max.lag, signif=signif, ylim=ylim, xlab=xlab, ylab=ylab, titles=titles, las=las, mar=mar, mgp=mgp, acf.print=acf.print, ...)
     } else if(type[1]=="qq"|type[1]==3) {
     if(is.null(xlab)) xlab <- "expected"
     if(is.null(ylab)) ylab <- "observed"
@@ -1133,21 +1136,28 @@ residualPlot <- function(x, type="ts", max.lag=NULL, signif=0.05, acf.print=FALS
   }
 
 # plot of prediction
-predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, xlab=NULL, ylab=NULL, xlim=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, cex.points=0.6, cex.axis=NULL, in.col="grey40", out.col="red", in.lty=1, out.lty=2, bands.col="grey70", las=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
+predictPlot <- function(x, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=NULL, ylab=NULL, xlim=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, cex.points=0.6, cex.axis=NULL, in.col="grey40", out.col="red", in.lty=1, out.lty=2, bands.col="grey70", las=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
   if(!identical(class(x),"feVAR")) stop("Argument 'x' must be an object of class 'feVAR'")
   if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
   if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
   add.grid <- add.grid[1]
   if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE
   nomi <- x$call$var.names
+  if(!is.null(var.names)) {
+    if(is.numeric(var.names)) {
+      nomi <- nomi[intersect(var.names,1:length(nomi))]
+      } else {
+      nomi <- intersect(var.names,nomi)
+      }
+    if(length(nomi)==0) nomi <- x$call$var.names
+    }
   opar <- par(no.readonly=T)
   if(is.null(x$call$unit)) {
     insam <- predict.feVAR(x)
     if(n.ahead>0) {
       outsam <- predict.feVAR(x, n.ahead=n.ahead)
-      outnam <- paste0("(",1:n.ahead,")")
       } else {
-      outsam <- outnam <- c()
+      outsam <- c()
       }
     dat <- x$data
     datnew <- newdata
@@ -1165,9 +1175,8 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, xlab=NULL, ylab=NULL, 
     insam <- predict.feVAR(x, unit=unit)
     if(n.ahead>0) {
       outsam <- predict.feVAR(x, n.ahead=n.ahead, unit=unit)
-      outnam <- paste0("(",1:n.ahead,")")
       } else {
-      outsam <- outnam <- c()
+      outsam <- c()
       }
     dat <- x$data[which(x$data[,x$call$unit] %in% unit),]
     if(!is.null(newdata)) {
@@ -1181,9 +1190,7 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, xlab=NULL, ylab=NULL, 
       }
     }
   n <- nrow(dat)
-  #
-  if(!is.null(datnew)&&nrow(datnew)==0) datnew <- NULL  ## <--
-  #
+  if(!is.null(datnew)&&nrow(datnew)==0) datnew
   if(is.null(x$call$time)) {
     tnam <- 1:n
     } else {
@@ -1209,10 +1216,13 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, xlab=NULL, ylab=NULL, 
       } else {
       ilimy <- ylim
       }
-    if(is.null(xlim)) {
+    if(is.null(xlim)|!is.numeric(xlim)) {
       ilimx <- c(1,iN)
       } else {
-      ilimx <- xlim
+      if(is.na(xlim[1])) xlim[1] <- 1
+      if(is.na(xlim[2])) xlim[2] <- iN
+      xlim <- sort(xlim)
+      ilimx <- c(max(1,xlim[1]),min(xlim[2],iN))
       }
     plot(idat[,1], type="n", xlab=xlab, ylab=ylab, las=las, ylim=ilimy, xlim=ilimx, main=titles[i],
          cex.axis=cex.axis[2], xaxt="n", ...)
@@ -1226,8 +1236,11 @@ predictPlot <- function(x, unit, n.ahead=0, newdata=NULL, xlab=NULL, ylab=NULL, 
       points((n+1):(n+nrow(datnew)), datnew[,nomi[i]], cex=cex.points, col=in.col)
       lines(n:(n+nrow(datnew)), c(iobs[n],datnew[,nomi[i]]), col=in.col, lty=in.lty)
       }
-    axis(1, at=1:n, labels=tnam, las=las, cex.axis=cex.axis[1])
-    axis(1, at=(n+1):iN, labels=outnam, las=las, cex.axis=cex.axis[1])
+    if(n.ahead==0) {
+      axis(1, at=1:n, labels=tnam, las=las, cex.axis=cex.axis[1])
+      } else {
+      axis(1, at=1:iN, labels=c(tnam,tnam[n]+1:n.ahead), las=las, cex.axis=cex.axis[1])
+      }
     box()
     }
   }

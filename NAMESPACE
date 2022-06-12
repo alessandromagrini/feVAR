@@ -15,6 +15,6 @@ S3method(print, unirootTest)
 importFrom("grDevices", "adjustcolor", "n2mfrow")
 importFrom("graphics", "abline", "axis", "box", "grid", "lines", "par", "points", "polygon")
 importFrom("stats", "approx", "ar", "cor", "cov", "embed", "fitted.values", "formula", "lm",
-  "logLik", "AIC", "BIC", "model.matrix", "na.omit", "pnorm", "predict", "qnorm", "qqline",
-  "qqnorm", "residuals", "residuals.lm", "summary.lm", "var", "nobs", "complete.cases")
+  "logLik", "AIC", "BIC", "model.matrix", "na.omit", "pnorm", "pchisq", "predict", "qnorm",
+  "qqline", "qqnorm", "residuals", "residuals.lm", "summary.lm", "var", "nobs", "complete.cases")
 importFrom("utils", "flush.console")
