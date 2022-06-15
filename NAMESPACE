@@ -1,4 +1,4 @@
-export(preProcess,unirootTest,LAG,feVAR,residualPlot,predictPlot)
+export(unirootTest,LAG,feVAR,residualPlot,predictPlot)
 
 S3method(print, feVAR)
 S3method(summary, feVAR)

@@ -1,14 +1,13 @@
 ## DA FARE
-#  - feVAR(): gestione interna differenze e box.cox
-#  - feVAR(): gestione missing con EM
-#
+#  - feVAR(): aggiungere tempo se 'time'=NULL
+#             retrotrasformazione
+#             imputazione con EM
 #  - IRF + grafico
 #  - error variance decomposition
 #  - spaghetti plot
 
 
 ## FUNZIONI DA ESPORTARE
-#  - preProcess
 #  - unirootTest
 #  - LAG
 #  - feVAR
@@ -226,15 +225,14 @@ kpssFun <- function(x, max.lag) {
   }
 
 # perform unit root test
-unirootTest <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0, max.lag=NULL) {
+unirootTest <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0, max.nlags=NULL) {
   dataD <- preProcess(var.names=var.names, unit=unit, time=time, data=data, box.cox=box.cox, ndiff=ndiff)
-    #imputation=FALSE)
   if(is.null(unit)) gr <- NULL else gr <- dataD[,unit]
-  max.lag <- max.lag[1]
-  if(!is.numeric(max.lag)) max.lag <- NULL else max.lag <- max(0,ceiling(max.lag))
+  max.nlags <- max.nlags[1]
+  if(!is.numeric(max.nlags)) max.nlags <- NULL else max.nlags <- max(0,ceiling(max.nlags))
   testList <- list()
   for(i in 1:length(var.names)) {
-    iadf <- oneTest(x=dataD[,var.names[i]], unit=gr, max.lag=max.lag)
+    iadf <- oneTest(x=dataD[,var.names[i]], unit=gr, max.lag=max.nlags)
     iadf$box.cox <- unname(attr(dataD,"box.cox")[var.names[i]])
     iadf$ndiff <- unname(attr(dataD,"ndiff")[var.names[i]])
     testList[[i]] <- iadf
@@ -257,13 +255,12 @@ print.unirootTest <- function(x, ...) {
   }
 
 # function for differencing (auxiliary)
-diffFun <- function(var.names, time, data, ndiff) {
+diffFun <- function(var.names, data, ndiff) {
   newdat <- data
-  if(!is.null(time)) newdat <- newdat[order(newdat[,time]),]
   n <- nrow(data)
   for(i in 1:length(var.names)) {
+    idat <- linInterp(data[,var.names[i]])
     if(ndiff[var.names[i]]>0) {
-      idat <- linInterp(data[,var.names[i]])
       idat_lag <- c(rep(NA,ndiff[i]),idat)[1:length(idat)]
       newdat[,var.names[i]] <- idat-idat_lag
       }
@@ -274,12 +271,16 @@ diffFun <- function(var.names, time, data, ndiff) {
 
 # pre-processing
 preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0) {
-  #imputation=TRUE, em.control=list(nlags=NULL,tol=1e-4,maxit=1000,quiet=FALSE)) {
   #
   if(missing(data)) stop("Argument 'data' is missing")
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame")
   if(missing(var.names)) stop("Argument 'var.names' is missing")
-  if(!is.character(var.names) || length(var.names)<1) stop("Argument 'var.names' must be a character vector of length 1 or greater")
+  if(!is.character(var.names)) {
+    stop("Argument 'var.names' must be a character vector")
+    } else {
+    var.names <- na.omit(var.names)
+    if(length(var.names)<1) stop("Argument 'var.names' must be a character vector of length 1 or greater")
+    }
   auxchk <- setdiff(var.names,colnames(data))  
   if(length(auxchk)>0) stop("Unknown variable '",auxchk[1],"' in argument 'var.names'")
   #
@@ -289,6 +290,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
     if(length(setdiff(unit,colnames(data)))>0) stop("Unknown variable '",unit,"' provided to argument 'unit'")
     if(length(intersect(unit,var.names))>0) stop("Variable '",unit,"' appears in both arguments 'var.names' and 'unit'")
     if(sum(is.na(data[,unit]))>0) stop("Variable '",unit,"' provided to argument 'unit' contains missing values")
+    data[,unit] <- factor(data[,unit])
     }
   #
   time <- time[1]
@@ -299,6 +301,11 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
     if(length(intersect(time,unit))>0) stop("Variable '",time,"' appears in both arguments 'unit' and 'time'")
     if(!is.numeric(data[,time])&!identical(class(data[,time]),"Date")) stop("Variable '",time,"' must be numeric or of class 'Date'")
     if(sum(is.na(data[,time]))>0) stop("Variable '",time,"' provided to argument 'time' contains missing values")
+    if(is.null(unit)) {
+      if(sum(duplicated(data[,time]))>0) stop("Variable '",time,"' contains duplicated values")
+      } else {
+      if(sum(sapply(split(data,data[,unit]),function(x){sum(duplicated(x[,time]))}))>0) stop("Variable '",time,"' contains duplicated values")
+      }
     }
   #
   if(!is.numeric(box.cox)) stop("Argument 'box.cox' must be a numeric value or vector")
@@ -330,10 +337,15 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
     ndiff[which(is.na(ndiff))] <- 0
     }
   if(sum(ndiff<0|round(ndiff)!=ndiff)>0) stop("Argument 'ndiff' must contain non-negative integer values")
-  #
-  #imputation <- imputation[1]
-  #if(is.na(imputation)||(!is.logical(imputation)|is.null(imputation))) imputation <- TRUE
-  #
+  # sort by time
+  if(!is.null(time)) {
+    if(is.null(unit)) {
+      data <- data[order(data[,time]),]
+      } else {
+      data <- data[order(data[,unit],data[,time]),]
+      }
+    }
+  # box-cox
   dataL <- data
   for(i in 1:length(var.names)) {
     ilam <- box.cox[var.names[i]]
@@ -343,7 +355,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
       }
     dataL[,var.names[i]] <- makeBoxCox(data[,var.names[i]],ilam)
     }
-  #
+  # differencing
   if(is.null(unit)) {
     n <- nrow(data)
     for(i in 1:length(var.names)) {
@@ -352,7 +364,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
         warning("Differencing not applied to variable '",var.names[i],"'",call.=F)
         }
       }
-    dataD <- diffFun(var.names=var.names, time=time, data=dataL, ndiff=ndiff)
+    dataD <- diffFun(var.names=var.names, data=dataL, ndiff=ndiff)
     attr(dataD,"box.cox") <- box.cox
     attr(dataD,"ndiff") <- ndiff
     if(max(ndiff)>0) {
@@ -361,7 +373,6 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
       res <- dataD
       }
     } else {
-    data[,unit] <- factor(data[,unit])
     dataD <- dataL
     isNA <- c()
     gr <- levels(data[,unit])
@@ -373,7 +384,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
       ind <- which(data[,unit]==gr[w])
       n_gr[w] <- length(ind)
       if(max(ndiff)>0) isNA <- c(isNA, ind[1]:ind[max(ndiff)])
-      dataD[ind,] <- diffFun(var.names=var.names, time=time, data=dataL[ind,], ndiff=ndiff)
+      dataD[ind,] <- diffFun(var.names=var.names, data=dataL[ind,], ndiff=ndiff)
       val0[w,] <- as.numeric(data[ind[1],var.names])
       }
     n <- max(n_gr)
@@ -388,28 +399,6 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
     res <- dataD[setdiff(1:nrow(data),isNA),,drop=F]
     }
   res
-  #
-  #if(imputation & sum(is.na(res[,var.names]))>0) {
-  #  nlags <- em.control$nlags[1]
-  #  if(!is.numeric(nlags)) {
-  #    nlags <- NULL
-  #    } else {
-  #    nlags <- round(abs(nlags))
-  #    }
-  #  tol <- em.control$tol[1]
-  #  if(!is.numeric(tol)|is.null(tol)) tol <- 1e-4
-  #  if(tol<=0) tol <- 1e-4
-  #  maxit <- em.control$maxit[1]
-  #  if(!is.numeric(maxit)|is.null(maxit)) maxit <- 1000
-  #  if(maxit<=0) maxit <- 1000 else maxit <- ceiling(maxit)
-  #  quiet <- em.control$quiet[1]
-  #  if(is.na(quiet)||(!is.logical(quiet)|is.null(quiet))) quiet <- FALSE
-  #  resI <- EMimput(var.names=var.names, unit=unit, time=time, data=res,
-  #    nlags=nlags,tol=tol,maxit=maxit,quiet=quiet)
-  #  resI$data.imputed
-  #  } else {
-  #  res
-  #  }
   }
 
 
@@ -506,6 +495,7 @@ regFit <- function(y.name, var.names, nlags, exogenous, data, unit, add.intercep
   mod <- lm(form, data=data)
   mod$call$formula <- form
   mod$call$data <- NULL
+  mod$call$data.used <- NULL
   mod$nlags <- nlags
   mod
   }
@@ -583,23 +573,27 @@ lagMaxCalc <- function(var.names, unit, exogenous, data, add.intercept) {
  
 # compute default lag length (auxiliary)
 lagCalc <- function(var.names, unit, data) {
-  dataOK <- data[complete.cases(data[,c(unit,var.names)]),]
   if(is.null(unit)) {
-    nt <- nrow(dataOK)
+    nt <- nrow(data)
     min(nt-3,round(sqrt(nt)))
     } else {
-    nt <- sapply(split(dataOK, dataOK[,unit]), nrow)
+    nt <- sapply(split(data, data[,unit]), nrow)
     min(nt-3,round(sqrt(nt)))
     }
   }
 
 # MASTER FUNCTION
-feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nlags=NULL, nlags=NULL, add.intercept=TRUE, local.adapt=FALSE, ic="bic", quiet=FALSE) {
+feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nlags=NULL, nlags=NULL, add.intercept=TRUE, box.cox=1, ndiff=0, local.adapt=FALSE, ic="bic", quiet=FALSE) {
   #
   if(missing(data)) stop("Argument 'data' is missing")
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame")
   if(missing(var.names)) stop("Argument 'var.names' is missing")
-  if(!is.character(var.names) || length(var.names)<2) stop("Argument 'var.names' must be a character vector of length 2 or greater")
+  if(!is.character(var.names)) {
+    stop("Argument 'var.names' must be a character vector of length 2 or greater")
+    } else {
+    var.names <- na.omit(var.names)
+    if(length(var.names)<2) stop("Argument 'var.names' must be a character vector of length 2 or greater")
+    }
   auxchk <- setdiff(var.names,colnames(data))  
   if(length(auxchk)>0) stop("Unknown variable '",auxchk[1],"' in argument 'var.names'")
   #
@@ -608,6 +602,8 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(!is.null(unit)) {
     if(length(setdiff(unit,colnames(data)))>0) stop("Unknown variable '",unit,"' provided to argument 'unit'")
     if(length(intersect(unit,var.names))>0) stop("Variable '",unit,"' appears in both arguments 'var.names' and 'unit'")
+    if(sum(is.na(data[,unit]))>0) stop("Variable '",unit,"' provided to argument 'unit' contains missing values")
+    data[,unit] <- factor(data[,unit])
     }
   #
   time <- time[1]
@@ -617,8 +613,16 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     if(length(intersect(time,var.names))>0) stop("Variable '",time,"' appears in both arguments 'var.names' and 'time'")
     if(length(intersect(time,unit))>0) stop("Variable '",time,"' appears in both arguments 'unit' and 'time'")
     if(!is.numeric(data[,time])&!identical(class(data[,time]),"Date")) stop("Variable '",time,"' must be numeric or of class 'Date'")
+    if(sum(is.na(data[,time]))>0) stop("Variable '",time,"' provided to argument 'time' contains missing values")
+    if(is.null(unit)) {
+      if(sum(duplicated(data[,time]))>0) stop("Variable '",time,"' contains duplicated values")
+      } else {
+      if(sum(sapply(split(data,data[,unit]),function(x){sum(duplicated(x[,time]))}))>0) stop("Variable '",time,"' contains duplicated values")
+      }
     }
   if(!is.null(exogenous)) {
+    exogenous <- na.omit(exogenous)
+    if(!is.character(exogenous)|length(exogenous)==0) stop("Argument 'exogenous' must be a character vector")
     auxch1 <- setdiff(exogenous,colnames(data))
     if(length(auxch1)>0) stop("Unknown variable '",auxch1[1],"' provided to argument 'exogenous'")
     auxch2 <- intersect(exogenous,var.names)
@@ -636,20 +640,19 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(is.na(local.adapt)||(!is.logical(local.adapt)|is.null(local.adapt))) local.adapt <- FALSE 
   quiet <- quiet[1]
   if(is.na(quiet)||(!is.logical(quiet)|is.null(quiet))) quiet <- FALSE
-  if(!is.null(unit)) data[,unit] <- factor(data[,unit])
-  if(!is.null(time)) {
-    if(is.null(unit)) {
-      data <- data[order(data[,time]),]
-      } else {
-      cou <- levels(data[,unit])
-      for(i in 1:length(cou)) {
-        ind <- which(data[,unit]==cou[i])
-        idat <- data[ind,]
-        idat <- idat[order(idat[,time]),]
-        data[ind,] <- idat
-        }
-      }
-    }
+  #if(!is.null(time)) {
+  #  if(is.null(unit)) {
+  #    data <- data[order(data[,time]),]
+  #    } else {
+  #    data <- data[order(data[,unit],data[,time]),]
+  #    }
+  #  }
+  dataOrig <- data
+  data <- preProcess(var.names=c(var.names,exogenous), unit=unit, time=time, data=data, box.cox=box.cox, ndiff=ndiff)
+  #data <- na.omit(dataD[,c(unit,time,var.names,exogenous)])
+  #naAct <- attr(data,"na.action")
+  #if(length(naAct)>0) warning("Some observations have been deleted due to missingness",call.=F)
+  #
   laglim <- lagMaxCalc(var.names=var.names, unit=unit, exogenous=exogenous, data=data, add.intercept=add.intercept)
   lag0 <- min(laglim, lagCalc(var.names=c(var.names,exogenous), unit=unit, data=data))
   if(is.null(nlags)) {
@@ -713,7 +716,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     mod <- fitVAR(var.names=var.names, unit=unit, exogenous=exogenous, data=data, max.nlags=max.nlags, nlags=nlags, add.intercept=add.intercept, penaltyFun=penaltyFun, cut=0, quiet=quiet)
     }
   modOK <- list(models=mod)
-  modOK$call <- list(var.names=var.names, unit=unit, time=time, exogenous=exogenous, add.intercept=add.intercept)
+  modOK$call <- list(var.names=var.names, unit=unit, time=time, exogenous=exogenous, add.intercept=add.intercept, ndiff=ndiff, box.cox=box.cox)
   modOK$nlags <- lapply(mod, function(y){y$nlags})
   #
   if(!is.null(unit) & add.intercept) {
@@ -763,7 +766,9 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   ic <- c(aic=-2*ll+2*npar, bic=-2*ll+npar*log(n), hqic=-2*ll+2*npar*log(log(n)))
   modOK$ic <- ic
   #
-  modOK$data <- data
+  modOK$data <- dataOrig
+  modOK$data.used <- data
+  #modOK$na.action <- naAct
   class(modOK) <- "feVAR"
   modOK
   }
@@ -773,10 +778,10 @@ print.feVAR <- function(x, ...) {
   cat("Fixed effects VAR on ",length(x$call$var.names)," variables",sep="","\n")
   if(is.null(x$call$unit)) {
     ng <- 1
-    nt <- nrow(x$data)
+    nt <- nrow(x$data.used)
     } else {
-    ng <- nlevels(x$data[,x$call$unit])
-    nt <- max(sapply(split(x$data,x$data[,x$call$unit]),nrow))
+    ng <- nlevels(x$data.used[,x$call$unit])
+    nt <- max(sapply(split(x$data.used,x$data.used[,x$call$unit]),nrow))
     }
   cat("  number of units: ",ng,sep="","\n")
   cat("  number of time points: ",nt,sep="","\n")
@@ -795,7 +800,7 @@ summary.feVAR <- function(object, ...) {
 # fitted method for class 'feVAR'
 fitted.feVAR <- function(object, ...) {
   fit <- lapply(object$models, function(x){x$fitted.values})
-  nomiObs <- rownames(object$data)
+  nomiObs <- rownames(object$data.used)
   for(i in 1:length(fit)) {
     ifit <- fit[[i]][nomiObs]
     names(ifit) <- nomiObs
@@ -803,8 +808,8 @@ fitted.feVAR <- function(object, ...) {
     }
   tab <- do.call(cbind, fit)
   nomi <- colnames(tab)
-  tabOK <- data.frame(object$data[,object$call$unit],
-                      object$data[,object$call$time],tab)
+  tabOK <- data.frame(object$data.used[,object$call$unit],
+    object$data.used[,object$call$time],tab)
   colnames(tabOK) <- c(object$call$unit,object$call$time,nomi)
   tabOK
   }
@@ -812,7 +817,7 @@ fitted.feVAR <- function(object, ...) {
 # residuals method for class 'feVAR'
 residuals.feVAR <- function(object, ...) {
   res <- lapply(object$models, function(x){x$residuals})
-  nomiObs <- rownames(object$data)
+  nomiObs <- rownames(object$data.used)
   for(i in 1:length(res)) {
     ires <- res[[i]][nomiObs]
     names(ires) <- nomiObs
@@ -820,8 +825,8 @@ residuals.feVAR <- function(object, ...) {
     }
   tab <- do.call(cbind, res)
   nomi <- colnames(tab)
-  tabOK <- data.frame(object$data[,object$call$unit],
-                      object$data[,object$call$time],tab)
+  tabOK <- data.frame(object$data.used[,object$call$unit],
+    object$data.used[,object$call$time],tab)
   colnames(tabOK) <- c(object$call$unit,object$call$time,nomi)
   tabOK
   }
@@ -832,7 +837,7 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
   if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
   if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
   if(!is.null(object$call$unit)) {
-    glev <- levels(object$data[,object$call$unit])
+    glev <- levels(object$data.used[,object$call$unit])
     if(is.null(unit)) {
       unit <- glev
       } else {
@@ -854,7 +859,7 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
     }
   if(n.ahead==0) {
     pred <- lapply(object$models, predict, newdata=newdata, interval="prediction", level=level)
-    dat0 <- object$data
+    dat0 <- object$data.used
     nomiObs <- rownames(dat0)
     for(i in 1:length(pred)) {
       ipred <- data.frame(pred[[i]])
@@ -871,9 +876,14 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
     } else {
     nomi <- object$call$var.names
     if(is.null(object$call$unit)) {
-      dat0 <- object$data
+      dat0 <- object$data.used
       obs0 <- dat0[nrow(dat0),]
       datOK <- rbind(dat0, obs0)
+      if(!is.null(object$call$time)) {
+        t_ax <- max(dat0[,object$call$time])+1:n.ahead
+        } else {
+        t_ax <- NULL
+        }
       fit <- sx <- dx <- data.frame(matrix(nrow=n.ahead,ncol=length(nomi)))
       colnames(fit) <- colnames(sx) <- colnames(dx) <- nomi
       for(j in 1:n.ahead) {
@@ -887,13 +897,24 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
         }
       predList <- list()
       for(i in 1:length(nomi)) {
-        itab <- data.frame(1:n.ahead,fit[,nomi[i]],sx[,nomi[i]],dx[,nomi[i]])
-        colnames(itab) <- c("n.ahead","mean","lower","upper")
+        if(!is.null(object$call$time)) {
+          itab <- data.frame(t_ax,fit[,nomi[i]],sx[,nomi[i]],dx[,nomi[i]])
+          } else {
+          itab <- data.frame(fit[,nomi[i]],sx[,nomi[i]],dx[,nomi[i]])
+          }
+        colnames(itab) <- c(object$call$time,"mean","lower","upper")
         predList[[i]] <- itab
         }
       names(predList) <- nomi
       } else {
-      dataList <- split(object$data,object$data[,object$call$unit])[unit]
+      dataList <- split(object$data.used,object$data.used[,object$call$unit])[unit]
+      if(!is.null(object$call$time)) {
+        t_ax <- lapply(dataList, function(x){
+          max(x[,object$call$time])+1:n.ahead
+          })
+        } else {
+        t_ax <- NULL
+        }
       fitList <- sxList <- dxList <- list()
       for(i in 1:length(dataList)) {
         dat0 <- dataList[[i]]
@@ -910,21 +931,26 @@ predict.feVAR <- function(object, newdata=NULL, n.ahead=0, unit=NULL, level=0.95
           newobs[,nomi] <- fit[j,nomi]
           datOK <- rbind(dat0, newobs, obs0)
           }
-        fitList[[i]] <- cbind(names(dataList)[i],1:n.ahead,fit)
-        sxList[[i]] <- cbind(names(dataList)[i],1:n.ahead,sx)
-        dxList[[i]] <- cbind(names(dataList)[i],1:n.ahead,dx)
+        fitList[[i]] <- fit
+        sxList[[i]] <- sx
+        dxList[[i]] <- dx
         }
       fitOK <- do.call(rbind,fitList)
       sxOK <- do.call(rbind,sxList)
       dxOK <- do.call(rbind,dxList)
-      fitOK[,1] <- factor(fitOK[,1],levels=glev)
-      sxOK[,1] <- factor(sxOK[,1],levels=glev)
-      dxOK[,1] <- factor(dxOK[,1],levels=glev)
-      colnames(fitOK) <- colnames(sxOK) <- colnames(dxOK) <- c(object$call$unit,"n.ahead",nomi)
+      colnames(fitOK) <- colnames(sxOK) <- colnames(dxOK) <- nomi
       predList <- list()
       for(i in 1:length(nomi)) {
-        itab <- cbind(fitOK[,1:2],fitOK[,nomi[i]],sxOK[,nomi[i]],dxOK[,nomi[i]])
-        colnames(itab) <- c(object$call$unit,"n.ahead","mean","lower","upper")
+        if(!is.null(object$call$time)) {
+          itab <- data.frame(rep(names(dataList),each=n.ahead),
+            do.call(c,t_ax),
+            fitOK[,nomi[i]],sxOK[,nomi[i]],dxOK[,nomi[i]])
+          } else {
+          itab <- data.frame(rep(names(dataList),each=n.ahead),
+            fitOK[,nomi[i]],sxOK[,nomi[i]],dxOK[,nomi[i]])
+          }
+        itab[,1] <- factor(itab[,1],levels=glev)
+        colnames(itab) <- c(object$call$unit,object$call$time,"mean","lower","upper")
         predList[[i]] <- itab
         }
       names(predList) <- nomi
@@ -964,9 +990,8 @@ BIC.feVAR <- function(object, ...) {
   }
 
 # residual ACF (auxiliary)
-residualACF <- function(x, max.lag, signif, acf.print, ylim, xlab, ylab, titles, mar, mgp, las, ...) {
+residualACF <- function(x, nomi, max.lag, signif, acf.print, ylim, xlab, ylab, titles, mar, mgp, las, ...) {
   res <- residuals(x)
-  nomi <- x$call$var.names
   lagM <- lagMaxCalc(var.names=nomi, unit=x$call$unit, exogenous=NULL, data=res, add.intercept=F)
   if(is.null(x$call$unit)) {
     if(is.null(max.lag)|!is.numeric(max.lag)) {
@@ -985,7 +1010,7 @@ residualACF <- function(x, max.lag, signif, acf.print, ylim, xlab, ylab, titles,
       } 
     nt <- nrow(res)
     } else {
-    resList <- split(res[,nomi], x$data[,x$call$unit])
+    resList <- split(res[,nomi], x$data.used[,x$call$unit])
     if(is.null(max.lag)|!is.numeric(max.lag)) {
       max.lag <- lagM
       } else {
@@ -1020,12 +1045,12 @@ residualACF <- function(x, max.lag, signif, acf.print, ylim, xlab, ylab, titles,
   for(i in 1:length(nomi)) {
     plot(0:lagOK, matOK[,nomi[i]], type="h", xlab=xlab, ylab=ylab, ylim=ylim, main=titles[i], ...)
     abline(h=0)
-    abline(h=c(-1,1)*zval/sqrt(nt), lty=2, col=2)
-    #xseq <- seq(0,lagOK,length=100)
-    #bsx <- sapply(xseq, function(x){-zval/sqrt(sum(nt-x))})
-    #bdx <- sapply(xseq, function(x){zval/sqrt(sum(nt-x))})
-    #lines(xseq, bsx, lty=2, col=2)
-    #lines(xseq, bdx, lty=2, col=2)
+    #abline(h=c(-1,1)*zval/sqrt(nt), lty=2, col=2)
+    xseq <- seq(0,lagOK,length=100)
+    bsx <- sapply(xseq, function(x){-zval/sqrt(sum(nt-x))})
+    bdx <- sapply(xseq, function(x){zval/sqrt(sum(nt-x))})
+    lines(xseq, bsx, lty=2, col=2)
+    lines(xseq, bdx, lty=2, col=2)
     }
   if(acf.print) {
     bpt <- apply(matOK[-1,,drop=F],2,function(z){
@@ -1037,9 +1062,8 @@ residualACF <- function(x, max.lag, signif, acf.print, ylim, xlab, ylab, titles,
   }
 
 # residual qqnorm (auxiliary)
-residualQQ <- function(x, xlab, ylab, cex, titles, las, mar, mgp, ...) {
+residualQQ <- function(x, nomi, xlab, ylab, cex, titles, las, mar, mgp, ...) {
   res <- residuals(x)
-  nomi <- x$call$var.names
   if(is.null(titles)) titles <- nomi
   opar <- par(no.readonly=T)
   on.exit(par(opar))
@@ -1051,10 +1075,9 @@ residualQQ <- function(x, xlab, ylab, cex, titles, las, mar, mgp, ...) {
   }
 
 # fitted vs residuals (auxiliary)
-fittedVSresiduals <- function(x, xlab, ylab, cex, titles, add.grid, las, mar, mgp, ...) {
+fittedVSresiduals <- function(x, nomi, xlab, ylab, cex, titles, add.grid, las, mar, mgp, ...) {
   res <- residuals(x)
   fit <- fitted.values(x)
-  nomi <- x$call$var.names
   if(is.null(titles)) titles <- nomi
   opar <- par(no.readonly=T)
   on.exit(par(opar))
@@ -1069,10 +1092,9 @@ fittedVSresiduals <- function(x, xlab, ylab, cex, titles, add.grid, las, mar, mg
   }
 
 # spaghetti plot of residuals (auxiliary)
-spagResid <- function(x, xlab, ylab, ylim, titles, add.grid, las, mar, mgp, ...) {
+spagResid <- function(x, nomi, xlab, ylab, ylim, titles, add.grid, las, mar, mgp, ...) {
   res <- residuals(x)
-  nomi <- x$call$var.names
-  nt <- length(unique(x$data[,x$call$time]))
+  nt <- length(unique(x$data.used[,x$call$time]))
   if(is.null(titles)) titles <- nomi
   if(is.null(x$call$unit)) {
     opar <- par(no.readonly=T)
@@ -1087,7 +1109,7 @@ spagResid <- function(x, xlab, ylab, ylim, titles, add.grid, las, mar, mgp, ...)
       box()
       }
     } else {
-    resList <- split(res,x$data[,x$call$unit])
+    resList <- split(res,x$data.used[,x$call$unit])
     opar <- par(no.readonly=T)
     on.exit(par(opar))
     par(mfrow=n2mfrow(length(nomi)), mar=mar, mgp=mgp, las=las)
@@ -1105,96 +1127,118 @@ spagResid <- function(x, xlab, ylab, ylim, titles, add.grid, las, mar, mgp, ...)
   }
 
 # graphical diagnostics of residuals
-residualPlot <- function(x, type="ts", max.lag=NULL, signif=0.05, acf.print=FALSE,
+residualPlot <- function(model, type="ts", var.names=NULL, max.nlags=NULL, signif=0.05, acf.print=FALSE,
   cex=0.6, xlab=NULL, ylab=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, las=0, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
-  if(!identical(class(x),"feVAR")) stop("Argument 'x' must be an object of class 'feVAR'")
-  add.grid <- add.grid[1]
-  if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE 
-  if(is.null(type)||is.na(type)) type <- 1
-  if(type[1]=="ts"|type[1]==1) {
-    if(is.null(xlab)) xlab <- "time point"
-    if(is.null(ylab)) ylab <- "residuals"
-    spagResid(x, xlab=xlab, ylab=ylab, ylim=ylim, titles=titles, add.grid=add.grid, las=las, mar=mar, mgp=mgp, ...)
-    } else if(type[1]=="acf"|type[1]==2) {
-    if(!is.numeric(signif)) signif <- 0.05 else signif <- min(c(1,max(c(signif,0),na.rm=T)),na.rm=T)
-    acf.print <- acf.print[1]
-    if(is.na(acf.print)||(!is.logical(acf.print)|is.null(acf.print))) acf.print <- TRUE 
-    if(is.null(xlab)) xlab <- "lag"
-    if(is.null(ylab)) ylab <- "ACF"
-    residualACF(x, max.lag=max.lag, signif=signif, ylim=ylim, xlab=xlab, ylab=ylab, titles=titles, las=las, mar=mar, mgp=mgp, acf.print=acf.print, ...)
-    } else if(type[1]=="qq"|type[1]==3) {
-    if(is.null(xlab)) xlab <- "expected"
-    if(is.null(ylab)) ylab <- "observed"
-    residualQQ(x, xlab=xlab, ylab=ylab, cex=cex, titles=titles, las=las, mar=mar, mgp=mgp, ...)
-    } else if(type[1]=="fitVSres"|type[1]==4) {
-    if(is.null(xlab)) xlab <- "fitted values"
-    if(is.null(ylab)) ylab <- "residuals"
-    fittedVSresiduals(x, xlab=xlab, ylab=ylab, cex=cex, titles=titles, add.grid=add.grid, las=las, mar=mar, mgp=mgp, ...)
-    } else {
-    stop("Argument 'type' must be one among 'ts' (1), 'acf' (2), 'qq' (3) and 'fitVSres' (4)")
-    }
-  }
-
-# plot of prediction
-predictPlot <- function(x, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=NULL, ylab=NULL, xlim=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, cex.points=0.6, cex.axis=NULL, in.col="grey40", out.col="red", in.lty=1, out.lty=2, bands.col="grey70", las=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
-  if(!identical(class(x),"feVAR")) stop("Argument 'x' must be an object of class 'feVAR'")
-  if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
-  if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
-  add.grid <- add.grid[1]
-  if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE
-  nomi <- x$call$var.names
+  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'")
+  nomi <- model$call$var.names
   if(!is.null(var.names)) {
     if(is.numeric(var.names)) {
       nomi <- nomi[intersect(var.names,1:length(nomi))]
       } else {
       nomi <- intersect(var.names,nomi)
       }
-    if(length(nomi)==0) nomi <- x$call$var.names
+    if(length(nomi)==0) nomi <- model$call$var.names
     }
-  opar <- par(no.readonly=T)
-  if(is.null(x$call$unit)) {
-    insam <- predict.feVAR(x)
-    if(n.ahead>0) {
-      outsam <- predict.feVAR(x, n.ahead=n.ahead)
-      } else {
-      outsam <- c()
-      }
-    dat <- x$data
-    datnew <- newdata
+  add.grid <- add.grid[1]
+  if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE 
+  if(is.null(type)||is.na(type)) type <- 1
+  if(type[1]=="ts"|type[1]==1) {
+    if(is.null(xlab)) xlab <- "time point"
+    if(is.null(ylab)) ylab <- "residuals"
+    spagResid(model, nomi=nomi, xlab=xlab, ylab=ylab, ylim=ylim, titles=titles, add.grid=add.grid, las=las, mar=mar, mgp=mgp, ...)
+    } else if(type[1]=="acf"|type[1]==2) {
+    if(!is.numeric(signif)) signif <- 0.05 else signif <- min(c(1,max(c(signif,0),na.rm=T)),na.rm=T)
+    acf.print <- acf.print[1]
+    if(is.na(acf.print)||(!is.logical(acf.print)|is.null(acf.print))) acf.print <- TRUE 
+    if(is.null(xlab)) xlab <- "lag"
+    if(is.null(ylab)) ylab <- "ACF"
+    residualACF(model, nomi=nomi, max.lag=max.nlags, signif=signif, ylim=ylim, xlab=xlab, ylab=ylab, titles=titles, las=las, mar=mar, mgp=mgp, acf.print=acf.print, ...)
+    } else if(type[1]=="qq"|type[1]==3) {
+    if(is.null(xlab)) xlab <- "expected"
+    if(is.null(ylab)) ylab <- "observed"
+    residualQQ(model, nomi=nomi, xlab=xlab, ylab=ylab, cex=cex, titles=titles, las=las, mar=mar, mgp=mgp, ...)
+    } else if(type[1]=="fitVSres"|type[1]==4) {
+    if(is.null(xlab)) xlab <- "fitted values"
+    if(is.null(ylab)) ylab <- "residuals"
+    fittedVSresiduals(model, nomi=nomi, xlab=xlab, ylab=ylab, cex=cex, titles=titles, add.grid=add.grid, las=las, mar=mar, mgp=mgp, ...)
     } else {
+    stop("Argument 'type' must be one among 'ts' (1), 'acf' (2), 'qq' (3) and 'fitVSres' (4)")
+    }
+  }
+
+# plot of prediction
+predictPlot <- function(model, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=NULL, ylab=NULL, xlim=NULL, ylim=NULL, titles=NULL, add.grid=TRUE, cex.points=0.6, cex.axis=NULL, fit.col="dodgerblue", out.col="red", in.col="grey40", new.col="grey40", fit.lty=1, in.lty=1, out.lty=1, new.lty=2, bands.col="grey70", las=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
+  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'")
+  if(!is.numeric(n.ahead)) n.ahead <- 0 else n.ahead <- round(max(n.ahead,na.rm=T))
+  if(is.na(n.ahead)|n.ahead<0|abs(n.ahead)=="Inf") n.ahead <- 0
+  add.grid <- add.grid[1]
+  if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE
+  nomi <- model$call$var.names
+  if(!is.null(var.names)) {
+    if(is.numeric(var.names)) {
+      nomi <- nomi[intersect(var.names,1:length(nomi))]
+      } else {
+      nomi <- intersect(var.names,nomi)
+      }
+    if(length(nomi)==0) nomi <- model$call$var.names
+    }
+  if(!is.null(model$call$unit)) {
     if(missing(unit)) stop("Argument 'unit' is missing")
     unit <- unit[1]
     if(is.null(unit)||is.na(unit)) stop("Argument 'unit' is missing")
-    glev <- levels(x$data[,x$call$unit])
+    glev <- levels(model$data.used[,model$call$unit])
     if(is.numeric(unit)) {
       if((unit%in%c(1:length(glev)))==F) stop("Invalid unit ID '",unit,"' provided to argument 'unit'")
       unit <- glev[unit]
       } else {
       if((unit%in%glev)==F) stop("Unknown unit '",unit,"' provided to argument 'unit'")
       }
-    insam <- predict.feVAR(x, unit=unit)
+    }
+  if(!is.null(newdata)) {
+    if(!identical(class(newdata),"data.frame")) {
+      stop("Argument 'newdata' must be an object of class 'data.frame'")
+      }
+    auxchk <- setdiff(nomi,colnames(newdata))
+    if(length(auxchk)>0) stop("Variable '",auxchk[1],"' not found in 'newdata")
+    if(!is.null(model$call$time) && (model$call$time %in% colnames(newdata))==F) {
+      stop("Variable '",model$call$time,"' not found in 'newdata'")
+      }
+    if(!is.null(model$call$unit)) {
+      if(model$call$unit %in% colnames(newdata)) {
+        datnew <- newdata[which(newdata[,model$call$unit] %in% unit),]
+        } else {
+        stop("Variable '",model$call$unit,"' not found in 'newdata'")
+        }
+      } else {
+      datnew <- newdata  
+      }
+    } else {
+    datnew <- NULL
+    }
+  opar <- par(no.readonly=T)
+  if(is.null(model$call$unit)) {  
+    insam <- predict.feVAR(model)
     if(n.ahead>0) {
-      outsam <- predict.feVAR(x, n.ahead=n.ahead, unit=unit)
+      outsam <- predict.feVAR(model, n.ahead=n.ahead)
       } else {
       outsam <- c()
       }
-    dat <- x$data[which(x$data[,x$call$unit] %in% unit),]
-    if(!is.null(newdata)) {
-      if(x$call$unit %in% colnames(newdata)) {
-        datnew <- newdata[which(newdata[,x$call$unit] %in% unit),]
-        } else {
-        stop("Variable '",x$call$unit,"' not found in 'newdata'")  
-        }
+    dat <- model$data.used
+    } else {
+    insam <- predict.feVAR(model, unit=unit)
+    if(n.ahead>0) {
+      outsam <- predict.feVAR(model, n.ahead=n.ahead, unit=unit)
       } else {
-      datnew <- NULL  
+      outsam <- c()
       }
+    dat <- model$data.used[which(model$data.used[,model$call$unit] %in% unit),]
     }
   n <- nrow(dat)
-  if(!is.null(datnew)&&nrow(datnew)==0) datnew
-  if(is.null(x$call$time)) {
-    tnam <- 1:n
+  if(is.null(model$call$time)) {
+    t_ax <- 1:(n+n.ahead)
     } else {
-    tnam <- sort(unique(dat[,x$call$time]))
+    tnam <- sort(unique(dat[,model$call$time]))
+    t_ax <- c(tnam,tnam[n]+1:n.ahead)
     }
   if(is.null(titles)) titles <- nomi
   if(is.null(xlab)) xlab <- ""
@@ -1202,7 +1246,7 @@ predictPlot <- function(x, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=N
   if(is.null(cex.axis)|!is.numeric(cex.axis)) cex.axis <- c(1,1)
   if(length(cex.axis)<2) cex.axis <- rep(cex.axis,2)
   if(is.null(las)) {
-    if(is.null(x$call$time)) las <- 1 else las <- 2
+    if(is.null(model$call$time)) las <- 1 else las <- 2
     }
   on.exit(opar)
   par(mfrow=n2mfrow(length(nomi)), mar=mar, mgp=mgp, las=las)
@@ -1216,7 +1260,7 @@ predictPlot <- function(x, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=N
       } else {
       ilimy <- ylim
       }
-    if(is.null(xlim)|!is.numeric(xlim)) {
+    if(is.null(xlim)|(!is.numeric(xlim)&!identical(class(xlim),"Date"))) {
       ilimx <- c(1,iN)
       } else {
       if(is.na(xlim[1])) xlim[1] <- 1
@@ -1224,22 +1268,37 @@ predictPlot <- function(x, unit, n.ahead=0, var.names=NULL, newdata=NULL, xlab=N
       xlim <- sort(xlim)
       ilimx <- c(max(1,xlim[1]),min(xlim[2],iN))
       }
-    plot(idat[,1], type="n", xlab=xlab, ylab=ylab, las=las, ylim=ilimy, xlim=ilimx, main=titles[i],
-         cex.axis=cex.axis[2], xaxt="n", ...)
-    if(add.grid) grid()
-    polygon(c(1:iN,iN:1), c(idat[,2],rev(idat[,3])),
-            border=NA, col=adjustcolor(bands.col,alpha.f=0.5))
-    if(n.ahead>0) lines(n:iN, c(iobs[n],idat[(n+1):iN,1]), col=out.col, lty=out.lty)
-    points(1:n, iobs, cex=cex.points, col=in.col)
-    lines(1:n, iobs, col=in.col, lty=in.lty)
-    if(!is.null(datnew)) {
-      points((n+1):(n+nrow(datnew)), datnew[,nomi[i]], cex=cex.points, col=in.col)
-      lines(n:(n+nrow(datnew)), c(iobs[n],datnew[,nomi[i]]), col=in.col, lty=in.lty)
+    plot(1:iN, idat[,1], type="n", xlab=xlab, ylab=ylab, las=las, ylim=ilimy, xlim=ilimx, main=titles[i], cex.axis=cex.axis[2], xaxt="n", ...)
+    xtck <- seq(ilimx[1],ilimx[2],by=round(diff(ilimx)/10))
+    axis(1, at=xtck, labels=t_ax[xtck], cex.axis=cex.axis[1])
+    if(add.grid) {
+      grid(NA,NULL)
+      abline(v=xtck,col="lightgray",lty="dotted")
       }
-    if(n.ahead==0) {
-      axis(1, at=1:n, labels=tnam, las=las, cex.axis=cex.axis[1])
+    if(n.ahead>0) {
+      idat2 <- idat
+      idat2[1:n,2:3] <- iobs[1:n]
+      polygon(c(n:iN,iN:n), c(idat2[n:iN,2],rev(idat2[n:iN,3])),
+        border=NA, col=adjustcolor(bands.col,alpha.f=0.5))
+      lines(n:iN, c(iobs[n],idat[(n+1):iN,1]), col=out.col, lty=out.lty)
       } else {
-      axis(1, at=1:iN, labels=c(tnam,tnam[n]+1:n.ahead), las=las, cex.axis=cex.axis[1])
+      polygon(c(1:n,n:1), c(idat[1:n,2],rev(idat[1:n,3])),
+        border=NA, col=adjustcolor(bands.col,alpha.f=0.5))
+      lines(1:n, idat[1:n,1], col=fit.col, lty=fit.lty)
+      }
+    lines(1:n, iobs, col=in.col, lty=in.lty)
+    points(1:n, iobs, cex=cex.points, col=in.col)
+    if(!is.null(datnew)) {
+      if(is.null(model$call$time)) {
+        lines(n:(n+nrow(datnew)), c(iobs[n],datnew[,nomi[i]]), col=new.col, lty=new.lty)
+        points((n+1):(n+nrow(datnew)), datnew[,nomi[i]], cex=cex.points, col=new.col)
+        } else {
+        ind <- which(datnew[,model$call$time]%in%(t_ax[(n+1):iN]))
+        if(length(ind)>0) {
+          lines(n:(n+length(ind)), c(iobs[n],datnew[ind,nomi[i]]), col=new.col, lty=new.lty)
+          points((n+1):(n+length(ind)), datnew[ind,nomi[i]], cex=cex.points, col=new.col)
+          }
+        }
       }
     box()
     }
