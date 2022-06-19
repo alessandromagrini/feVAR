@@ -49,7 +49,7 @@ summary(m_agr)
 Stability check:
 ```
 eig0 <- stabilityCheck(m_agr)
-sum(eig0>=1)  ## all eigenvalues are lower than 1 -> stable
+which(eig0>=1)  ## no eigenvalue greater or equal to 1 -> stable
 ```
 Graphical diagnostics:
 ```
