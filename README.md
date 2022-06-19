@@ -3,7 +3,7 @@ __Estimation and analysis of fixed effects vector autoregressive models__
 
 `feVAR` is an R package implementing bias-corrected least squares estimation for fixed effects vector autoregressive models (Dhaene & Jochmans, 2016), together with several post-estimation functionalities. Both panel and non-panel data are allowed.
 
-G. Dhaene, and K. Jochmans (2016). Bias-corrected estimation of panel vector autoregressions. _Economics Letters_, 145: 98-103. DOI: 10.1016/j.econlet.2016.06.010
+G. Dhaene, and K. Jochmans (2016). Bias-corrected estimation of panel vector autoregressions. _Economics Letters_, 145: 98-103. DOI: <a href="https://doi.org/10.1016/j.econlet.2016.06.010">10.1016/j.econlet.2016.06.010</a>
 
 R (The R Project for Statistical Computing) needs to be installed on your system in order
 to use the `feVAR` package. R can be downloaded from https://www.r-project.org/.
