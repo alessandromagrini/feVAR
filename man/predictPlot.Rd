@@ -42,12 +42,12 @@ interval.col="grey70", las=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...)}
 %\references{}
 \seealso{\link{feVAR}; \link{predict.feVAR}.}
 \examples{
+\dontrun{
 data(agrisus2020)
 varNames <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(varNames, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 
-\dontrun{
 # predictions for the first four variables on unit 'Italy'
 predictPlot(m_agr, unit.id="Italy", var.names=varNames[1:4])  ## in-sample
 predictPlot(m_agr, unit.id=15, var.names=1:4)                 ## same as before

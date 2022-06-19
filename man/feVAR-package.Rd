@@ -12,16 +12,16 @@
   License: \tab GPL-2
   }
 Fixed effects Vector Autoregressive Models are Vector Autoregressive Models (VAR) for panel data, firstly introduced by Holtz-Eakin et al. (1988).
-Let \eqn{X_1,\ldots,X_m} be \eqn{m} endogenous variables and \eqn{Z_1,\ldots,Z_q} be \eqn{q} exogenous variables.
-Also, let \eqn{\bm{y}_{i,t}} and \eqn{\bm{z}_{i,t}} be, respectively, the vector of endogenous and exogenous variables observed on unit \eqn{i} at time \eqn{t}.
+Let \eqn{Y_1,\ldots,Y_m} be \eqn{m} endogenous variables and \eqn{X_1,\ldots,X_q} be \eqn{q} exogenous variables.
+Also, let \eqn{\bm{y}_{i,t}} be an \eqn{m}-dimensional vector including the values of endogenous variables observed on unit \eqn{i} at time \eqn{t}, and \eqn{\bm{x}_{i,t}} be a \eqn{q}-dimensional vector including the values of exogenous variables observed on unit \eqn{i} at time \eqn{t}.
 A fixed effect Vector Autoregressive Model (feVAR) of order \eqn{p\in\mathrm{N}_0} is defined as:
 \deqn{\bm{y}_{i,t} = \bm{\alpha}_i+\sum_{j=1}^p\bm{B}_j\bm{y}_{i,t-j}+\bm{G}\bm{x}_{i,t}+\bm{\varepsilon}_{i,t}}
 where:
 \itemize{
 \item{\eqn{\bm{\alpha}_i} is a \eqn{p}-dimensional vector including the intercepts of the endogenous variables for unit \eqn{i}};
-\item{\eqn{\bm{B}_j}} is a \eqn{p\times p} matrix including the regression coefficients among the endogenous variables at time lag \eqn{j};
+\item{\eqn{\bm{B}_j}} is a \eqn{p\times p} matrix including the regression coefficients among the endogenous variables at time lag \eqn{j=1,\ldots,p};
 \item{\eqn{\bm{G}}} is a \eqn{q\times q} matrix including the regression coefficients of exogenous variables on endogenous variables;
-\item{\eqn{\bm{\varepsilon}_{i,t}} is a \eqn{p}-dimensional vector of random errors for unit \eqn{i} at time \eqn{t} such that \eqn{\mathrm{E}(\bm{\varepsilon}_{i,t})=0} and \eqn{\mathrm{E}(\bm{\varepsilon}_{i,t}\cdot\bm{\varepsilon}_{k,t})=0} \eqn{\forall i,k,t}.}
+\item{\eqn{\bm{\varepsilon}_{i,t}} is a \eqn{p}-dimensional vector of random errors for unit \eqn{i} at time \eqn{t} such that \eqn{\mathrm{E}(\bm{\varepsilon}_{i,t})=0} and \eqn{\mathrm{E}(\bm{\varepsilon}_{i,t}~\bm{\varepsilon}_{k,t})=0} \eqn{\forall i,k,t}.}
 }
 The order \eqn{p} represents the number of lags up to which endogenous variables are supposed to influence each other, which can be determined based on information criteria.
 

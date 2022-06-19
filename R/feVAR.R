@@ -233,7 +233,7 @@ kpssFun <- function(x, max.lag) {
 
 # perform unit root test
 unirootTest <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0, max.nlags=NULL) {
-  var.names <- na.omit(var.names)
+  var.names <- var.names[which(!is.na(var.names))]
   dataD <- preProcess(var.names=var.names, unit=unit, time=time, data=data, box.cox=box.cox, ndiff=ndiff, check=T)
   if(is.null(unit)) gr <- NULL else gr <- dataD[,unit]
   max.nlags <- max.nlags[1]
@@ -287,7 +287,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
     if(!is.character(var.names)) {
       stop("Argument 'var.names' must be a character vector")
       } else {
-      var.names <- na.omit(var.names)
+      var.names <- var.names[which(!is.na(var.names))]
       if(length(var.names)<1) stop("Argument 'var.names' must be a character vector of length 1 or greater")
       }
     auxchk <- setdiff(var.names,colnames(data))  
@@ -601,14 +601,14 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
   if(!is.character(var.names)) {
     stop("Argument 'var.names' must be a character vector of length 2 or greater")
     } else {
-    var.names <- na.omit(var.names)
+    var.names <- var.names[which(!is.na(var.names))]
     if(length(var.names)<2) stop("Argument 'var.names' must be a character vector of length 2 or greater")
     }
   auxchk <- setdiff(var.names,colnames(data))  
   if(length(auxchk)>0) stop("Unknown variable '",auxchk[1],"' in argument 'var.names'")
   #
   if(!is.null(unit)) {
-    unit <- na.omit(unit)
+    unit <- unit[which(!is.na(unit))]
     if(!is.character(unit)|length(unit)!=1) stop("Argument 'unit' must be either NULL or a character vector of length 1")
     if(length(unit)>0) {
       if(length(setdiff(unit,colnames(data)))>0) stop("Unknown variable '",unit,"' provided to argument 'unit'")
@@ -621,7 +621,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     }
   #
   if(!is.null(time)) {
-    time <- na.omit(time)
+    time <- time[which(!is.na(time))]
     if(!is.character(time)|length(time)!=1) stop("Argument 'time' must be either NULL or a character vector of length 1")
     if(length(time)>0) {
       if(length(setdiff(time,colnames(data)))>0) stop("Unknown variable '",time,"' provided to argument 'time'")
@@ -640,7 +640,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     }
   #
   if(!is.null(exogenous)) {
-    exogenous <- na.omit(exogenous)
+    exogenous <- exogenous[which(!is.na(exogenous))]
     if(!is.character(exogenous)|length(exogenous)==0) stop("Argument 'exogenous' must be either a character vector or NULL")
     auxch1 <- setdiff(exogenous,colnames(data))
     if(length(auxch1)>0) stop("Unknown variable '",auxch1[1],"' provided to argument 'exogenous'")
@@ -780,7 +780,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
       iex <- lapply(exogenous, function(x){
         imod$coefficients[grep(x, names(imod$coefficients))]
         })
-      exList[[i]] <- do.call(rbind,iex)
+      exList[[i]] <- do.call(c,iex)
       }
     excoef <- do.call(rbind,exList)
     rownames(excoef) <- var.names

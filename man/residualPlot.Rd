@@ -29,15 +29,22 @@
 %\references{}
 \seealso{\link{feVAR}; \link{predict.feVAR}.}
 \examples{
+\dontrun{
 data(agrisus2020)
 varNames <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(varNames, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 
-\dontrun{ 
-residualPlot(m_agr, type="ts", cex.main=1.1)        ## time series plot
-residualPlot(m_agr, type="acf", cex.main=1.1)       ## autocorrelogram
-residualPlot(m_agr, type="qq", cex.main=1.1)        ## normal quantile plot
-residualPlot(m_agr, type="fitVSres", cex.main=1.1)  ## fitted versus residuals
+# time series plot of residuals
+residualPlot(m_agr, type="ts", cex.main=1.1)
+
+# autocorrelogram of residuals
+residualPlot(m_agr, type="acf", cex.main=1.1)
+
+# normal quantile plot of residuals
+residualPlot(m_agr, type="qq", cex.main=1.1)
+
+# fitted versus residuals
+residualPlot(m_agr, type="fitVSres", cex.main=1.1)
 }
 }

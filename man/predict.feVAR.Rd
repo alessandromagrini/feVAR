@@ -20,12 +20,12 @@
 %\references{}
 \seealso{\link{feVAR}.}
 \examples{
+\dontrun{
 data(agrisus2020)
 varNames <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(varNames, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 
-\dontrun{
 predict(mod_agr)             ## in-sample prediction
 predict(mod_agr, n.ahead=3)  ## 3 steps ahead
 }
