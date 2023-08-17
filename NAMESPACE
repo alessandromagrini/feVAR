@@ -1,22 +1,32 @@
-export(unirootTest,LAG,feVAR,stabilityCheck,residualPlot,predictPlot)
+export(LAG,unirootTest,feVAR,residBPtest,IRF,forecastError)
 
 S3method(print, feVAR)
 S3method(summary, feVAR)
+S3method(plot, feVAR)
 S3method(coef, feVAR)
 S3method(residuals, feVAR)
 S3method(fitted, feVAR)
+S3method(nobs, feVAR)
 S3method(confint, feVAR)
 S3method(predict, feVAR)
+S3method(cooks.distance, feVAR)
 S3method(logLik, feVAR)
 S3method(extractAIC, feVAR)
 S3method(AIC, feVAR)
 S3method(BIC, feVAR)
 S3method(print, unirootTest)
+S3method(print, predict.feVAR)
+S3method(plot, predict.feVAR)
+S3method(print, residBPtest.feVAR)
+S3method(print, IRF.feVAR)
+S3method(plot, IRF.feVAR)
 
 importFrom("grDevices", "adjustcolor", "n2mfrow")
 importFrom("graphics", "abline", "axis", "box", "grid", "lines", "par", "points", "polygon")
 importFrom("stats", "approx", "ar", "cor", "cov", "embed", "fitted.values", "formula", "lm",
-  "logLik", "AIC", "BIC", "model.matrix", "na.omit", "pnorm", "pchisq", "predict", "qnorm",
-  "qqline", "qqnorm", "residuals", "residuals.lm", "summary.lm", "confint.lm", "var", "nobs",
-  "complete.cases")
+  "logLik", "AIC", "BIC", "model.matrix", "na.omit", "pnorm", "pchisq", "qnorm", "rnorm",
+  "qt", "anova", "qqline", "qqnorm", "predict", "fitted", "residuals", "residuals.lm",
+  "summary.lm", "confint.lm", "nobs", "diffinv", "na.exclude", "quantile", "var", "vcov", 
+  "cooks.distance")
 importFrom("utils", "flush.console")
+importFrom("MASS", "boxcox", "stepAIC")
