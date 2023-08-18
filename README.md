@@ -38,10 +38,12 @@ Unit root tests to check stationarity of the time series:
 # names of endogenous variables
 x_agr <- colnames(agrisus2020)[4:15]
 
-# tests on variables in level -> most variables are nonstationary
+# tests on variables in level
+#  -> most variables are nonstationary
 unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020)
 
-# tests on variables in logarithmic differences -> stationarity confirmed for all variables excepting 'Manager_ratio'
+# tests on variables in logarithmic differences
+#  -> stationarity confirmed for all variables excepting 'Manager_ratio'
 unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020, box.cox=0, ndiff=1)
 ```
 Estimation of a feVAR model:
