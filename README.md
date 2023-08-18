@@ -1,13 +1,13 @@
 # feVAR
 __Estimation and analysis of fixed effects vector autoregressive models__
 
-`feVAR` is an R package implementing the bias-corrected ordinary least squares estimation proposed by Dhaene & Jochmans (2016) and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
+`feVAR` is an R package for estimation and analysis of fixed effects Vector AutoRegressive (feVAR) models (see, e.g., Holtz-Eakin et al., 1988). The package implements the bias-corrected ordinary least squares estimation proposed by Dhaene & Jochmans (2016) and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
 
-Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _Journal of the Royal Statistical Society_, Series B, 39(1): 1-38. 
+Holtz-Eakin D., Newey W., Rosen H.S. (1988). Estimating vector autoregressions with panel data. _Econometrica_, 56(6), 1371-1395. DOI: <a href="https://doi.org/10.2307/1913103">10.2307/1913103</a>
 
 Dhaene G., Jochmans K. (2016). Bias-corrected estimation of panel vector autoregressions. _Economics Letters_, 145: 98-103. DOI: <a href="https://doi.org/10.1016/j.econlet.2016.06.010">10.1016/j.econlet.2016.06.010</a>
 
-Holtz-Eakin D., Newey W., Rosen H.S. (1988). Estimating vector autoregressions with panel data. _Econometrica_, 56(6), 1371-1395. DOI: <a href="https://doi.org/10.2307/1913103">10.2307/1913103</a>
+Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _Journal of the Royal Statistical Society_, Series B, 39(1): 1-38. 
 
 R (The R Project for Statistical Computing) needs to be installed on your system in order
 to use the `feVAR` package. R can be downloaded from https://www.r-project.org/.
