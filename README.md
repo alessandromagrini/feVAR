@@ -9,6 +9,7 @@ Dhaene G., Jochmans K. (2016). Bias-corrected estimation of panel vector autoreg
 
 Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _Journal of the Royal Statistical Society_, Series B, 39(1): 1-38. 
 
+
 R (The R Project for Statistical Computing) needs to be installed on your system in order
 to use the `feVAR` package. R can be downloaded from https://www.r-project.org/.
 
