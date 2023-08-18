@@ -17,7 +17,7 @@ install.packages("devtools")  ## do not run if package 'devtools' is already ins
 library(devtools)
 install_github("alessandromagrini/feVAR")
 ```
-Some examples of use of the package are reported below. Please see the manual of the package for more details on the user functions and on the theory.
+Some examples of use of the package are reported below. Please see the manual of the package for more details on the user functions and on the underlying theory.
 
 For any request or feedback, please write to <alessandro.magrini@unifi.it> (Alessandro Magrini)
 _________________________________________________________________
