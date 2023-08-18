@@ -33,17 +33,25 @@ Load data on EU agricultural sustainability indicators
 ```
 data(agrisus2020)
 ```
-Estimation of a fixed effects vector autoregressive model:
+Unit root tests to check stationarity of the time series:
 ```
 # names of endogenous variables
 x_agr <- colnames(agrisus2020)[4:15]
 
-# fit a model with p=1 on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
+# tests on variables in level
+unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020)
+
+# tests on variables in logarithmic differences
+unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020, box.cox=0, ndiff=1)
+```
+Estimation of a feVAR model:
+```
+# fit a model with 1 lag on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
 m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 summary(m_agr)  ## summary of estimation
 
-# automated selection of the lag order (max p=3)
+# automated selection of the lag order (max lag order: 3)
 m_agr_auto <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, ic="bic", max.nlags=3)
 summary(m_agr_auto)  ## summary of estimation
