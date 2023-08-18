@@ -1580,8 +1580,8 @@ acfCalc <- function(x, unit.id, max.lag, bptest) {
     }
   }
 
-# box-pierce test on residuals
-residBPtest <- function(model, max.lag=NULL) {
+# autocorrelation test on residuals
+autocorTest <- function(model, max.lag=NULL) {
   res <- residuals(model)
   if(!is.null(model$call$unit)) {
     acf1 <- acfCalc(res[,model$call$var.names,drop=F], unit.id=res[,model$call$unit], max.lag=max.lag, bptest=T)
@@ -1591,21 +1591,17 @@ residBPtest <- function(model, max.lag=NULL) {
     acf2 <- acfCalc(res[,model$call$var.names,drop=F]^2, unit.id=NULL, max.lag=max.lag, bptest=T)
     }
   obj <- list(residual=acf1[3:4], sq.residual=acf2[3:4])
-  class(obj) <- "residBPtest.feVAR"
+  class(obj) <- "autocorTest.feVAR"
   obj
   }
 
-# print method for class 'residBPtest.feVAR'
-print.residBPtest.feVAR <- function(x, ...) {
+# print method for class 'autocorTest.feVAR'
+print.autocorTest.feVAR <- function(x, ...) {
   p1 <- x$residual$p.value
   p2 <- x$sq.residual$p.value
-  pfun <- function(z) {
-    ind <- unname(which(z<0.05))
-    ifelse(length(ind)>0,min(ind),"-")
-    }
-  cat("Box-Pierce test on residuals up to ",nrow(p1)," lags",sep="","\n")
-  cat(" -> minimum lag with significant autocorrelation:","\n")
-  print(data.frame(residual=apply(p1,2,pfun),sq.residual=apply(p2,2,pfun)))
+  mat <- cbind(residual=p1[nrow(p1),],sq.residual=p2[nrow(p2),])
+  cat("p-values of the Ljung-Box test on residuals (lag ",nrow(p1),")",sep="","\n")
+  print(mat)
   }
 
 # companion matrix (auxiliary)

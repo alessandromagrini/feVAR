@@ -37,7 +37,5 @@ Magrini A., Giambona F. (2022). A composite indicator to assess sustainability o
 
 Magrini A. (2022). Assessment of agricultural sustainability in European Union countries: A group-based multivariate trajectory approach. \emph{Advances in Statistical Analysis}, 106: 673-703. DOI: 10.1007/s10182-022-00437-9
 
-United States Department of Agriculture (2022). International agricultural productivity. USDA, Economic Research Service (ERS), Washington, DC, US.
-
-https://www.ers.usda.gov/data-products/international-agricultural-productivity
+United States Department of Agriculture (2022). International agricultural productivity. USDA, Economic Research Service (ERS), Washington, DC, US. https://www.ers.usda.gov/data-products/international-agricultural-productivity
 }

@@ -33,7 +33,7 @@
   \item{new.lty}{Line type for the time series of new data. Default is 1.}
   \item{obs.cex}{Expansion factor for points in the time series of observed data. If 0, points are suppressed. Default is 0.4.}
   \item{new.cex}{Expansion factor for points in the time series of new data. If 0, points are suppressed. Default is 0.4.}
-  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically based on the argument \code{var.names}.}
+  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically.}
   \item{mar}{Numeric vector of length 4 indicating the margin sizes in the following order: bottom, left, top, right. Default is c(3.5,3.5,2,2).}
   \item{mgp}{Numeric vector of length 3 indicating the location of axis labels, tick mark labels and tick marks, respectively, relative to the plot window. Default is c(2.3,0.8,0).}
   \item{...}{Further parameters to be passed to the generic method \code{plot}.}
@@ -51,11 +51,11 @@ m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 
 # predictions for the first four variables on unit 'Italy'
-pr1 <- predict(m_agr, unit.id="Italy", var.names=varNames[1:4])  ## in-sample
+pr1 <- predict(m_agr, unit.id="Italy", var.names=varNames[1:4])  ## in-sample predictions
 plot(pr1)
 pr2 <- predict(m_agr, unit.id=15, var.names=1:4)                 ## equivalent
 plot(pr2)
-pr3 <- predict(m_agr, unit.id=15, var.names=1:4, n.ahead=3)      ## 3 steps ahead forecast
+pr3 <- predict(m_agr, unit.id=15, var.names=1:4, n.ahead=3)      ## 3 steps ahead forecasts
 plot(pr3)
 }
 }

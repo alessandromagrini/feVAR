@@ -11,11 +11,11 @@
 \value{A list with one component for each step ahead. Each component of the list is a matrix including the value of forecast error metrics (by column) for each endogenous variable (by row). Let \eqn{\hat{y}_t(h)} be the (pseudo) prediction at \eqn{h} steps ahead performed based on the information up to time \eqn{t}.
 Available metrics include:
 \itemize{
-  \item{'rmse', }{the root mean squared error (RMSE): \deqn{RMSE(h)=\sqrt{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-\hat{y}_t(h))^2}}}
-  \item{'mae', }{the mean absolute error (MAE): \deqn{MAE(h)=\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-\hat{y}_t(h)|}}
-  \item{'rmsse', }{the root mean squared scaled error (RMSSE), equal to the RMSE divided by the RMSE of the naive predictor: \deqn{RMSSE(h)=\sqrt{\frac{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-\hat{y}_t(h))^2}{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-y_t)^2}}}}
-  \item{'mase', }{the mean absolute scaled error (MAE), equal to the MAE divided by the MAE of the naive predictor: \deqn{MASE(h)=\frac{\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-\hat{y}_t(h)|}{\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-y_t|}}}
-  \item{'mape', }{the mean absolute percentage error (MAPE), computed only for strictly positive endogenous variables: \deqn{MAPE(h)=\frac{100}{T-h}\sum_{t=1}^{T-h}\frac{|y_{t+h}-\hat{y}_t(h)|}{y_{t+h}}}}
+  \item{'rmse', }{the root mean squared error (RMSE): \deqn{\mathrm{RMSE}(h)=\sqrt{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-\hat{y}_t(h))^2}}}
+  \item{'mae', }{the mean absolute error (MAE): \deqn{\mathrm{MAE}(h)=\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-\hat{y}_t(h)|}}
+  \item{'rmsse', }{the root mean squared scaled error (RMSSE), equal to the RMSE divided by the RMSE of the naive predictor: \deqn{\mathrm{RMSSE}(h)=\sqrt{\frac{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-\hat{y}_t(h))^2}{\frac{1}{T-h}\sum_{t=1}^{T-h}(y_{t+h}-y_t)^2}}}}
+  \item{'mase', }{the mean absolute scaled error (MAE), equal to the MAE divided by the MAE of the naive predictor: \deqn{\mathrm{MASE}(h)=\frac{\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-\hat{y}_t(h)|}{\frac{1}{T-h}\sum_{t=1}^{T-h}|y_{t+h}-y_t|}}}
+  \item{'mape', }{the mean absolute percentage error (MAPE), computed only for strictly positive endogenous variables: \deqn{\mathrm{MAPE}(h)=\frac{100}{T-h}\sum_{t=1}^{T-h}\frac{|y_{t+h}-\hat{y}_t(h)|}{y_{t+h}}}}
   }
 }
 %\note{}

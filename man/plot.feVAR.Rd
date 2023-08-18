@@ -18,15 +18,22 @@
   \item{ylab}{Label for the y-axis.}
   \item{titles}{Character vector containing the title for the graphics. If the vector has names, titles are assigned based on them, otherwise they are assigned in the same order of the endogenous variables. If \code{NULL} (the default), the names of endogenous variables are used as titles.}
   \item{las}{Orientation of the tick mark labels. Possible values are: parallel to the axis (0), horizontal (1), perpendicular to the axis (2), vertical (3). If \code{NULL} (the default), it is set automatically based on the length of axis labels.}
-  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically based on the argument \code{var.names}.}
+  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically.}
   \item{mar}{Numerical vector of length 4 indicating the margin sizes in the following order: bottom, left, top, right. Default is c(3.5,3.5,2,2).}
   \item{mgp}{Numerical vector of length 3 indicating the location of axis labels, tick mark labels and tick marks, respectively, relative to the plot window. Default is c(2.3,0.8,0).}
   \item{...}{Further parameters to be passed to the generic method \code{plot}.}
 }
 %\value{}
-\details{In order to meet the hypothesis of serially uncorrelated errors, autocorrelograms of residuals must show no significant spikes. Note that the violation of the hypothesis of serially uncorrelated errors leads to inconsistent estimates.
+\details{
+In case of panel data, the autocorrelation of residuals at lag \eqn{k} is computed as:
+\deqn{\rho_k=\frac{\sum_{i=1}^n\sum_{t=1}^{T_i-k}e_{i,t}~e_{i,t+k}}{\sum_{i=1}^n\sum_{t=1}^{T_i}e_{i,t}^2}}
+where \eqn{e_{i,t}} is the residual for unit \eqn{i} at time \eqn{t}, \eqn{~T_i} is the number of time points for unit \eqn{i}, and \eqn{n} is the number of units.
+The autocorrelation of squared residuals is computed analogously by replacing \eqn{e_{i,t}} with \eqn{e_{i,t}^2} for each \eqn{i} and \eqn{t}.
+}
+\note{
+In order to meet the hypothesis of serially uncorrelated errors, autocorrelograms of residuals must show no significant spikes. Note that the violation of the hypothesis of serially uncorrelated errors leads to inconsistent estimates.
 
-In order to meet the hypothesis of homoschedastic errors, autocorrelograms of squared residuals must show no significant spikes, and the graphics of fitted values versus residuals must show no patterns. Note that the violation of the hypothesis of homoschedasticity leads to inefficient but still consistent estimates. The Box-Cox transformation may solve heteroschedasticity (see argument 'box.cox' in the function \code{\link{feVAR}}).
+In order to meet the hypothesis of homoschedastic errors, autocorrelograms of squared residuals must show no significant spikes, and the graphics of fitted values versus residuals must show no patterns. Note that the violation of the hypothesis of homoschedasticity leads to inefficient but still consistent estimates. The Box-Cox transformation may solve heteroschedasticity (see argument \code{box.cox} of the function \code{\link{feVAR}}).
 
 In order to meet the hypothesis of normal errors, the normal quantile plot of residuals must look approximatively linear. Note that the violation of the hypothesis of normal errors does not affect neither consistency nor efficiency of the estimates, but significance tests and confidence intervals are no more exact and are valid only asymptotically.
 }
@@ -34,7 +41,6 @@ In order to meet the hypothesis of normal errors, the normal quantile plot of re
 %\references{}
 \seealso{\code{\link{feVAR}}.}
 \examples{
-\dontrun{
 data(agrisus2020)
 x_agr <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
@@ -54,5 +60,4 @@ plot(m_agr, type="fitVSres", cex.main=1.1)
 
 # normal quantile plots of residuals
 plot(m_agr, type="qqnorm", cex.main=1.1)
-}
 }

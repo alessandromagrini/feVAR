@@ -19,7 +19,7 @@
   \item{\code{predicted}: }{a named list of objects of class \code{data.frame}, one for each endogenous variable. Each data frame includes one record for each observation, and the following variables: unit name (only in case of panel data), time of observation, point predictions, lower and upper bound of prediction intervals;}
   \item{\code{observed}: }{an object of class \code{data.frame} containing the observed data;}
   \item{\code{n.ahead}: }{the number of steps ahead of the predictions;}
-  \item{\code{call}: }{list including the main characteristics of the argument \code{object}.}
+  \item{\code{call}: }{component \code{call} of the object of class \code{feVAR} passed to argument \code{object}. See 'Value' of the function \code{\link{feVAR}}.}
   }
 }
 %\details{}
@@ -34,7 +34,7 @@ x_agr <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 
-predict(mod_agr)             ## in-sample prediction
-predict(mod_agr, n.ahead=3)  ## 3 steps ahead forecast
+predict(mod_agr)             ## in-sample predictions
+predict(mod_agr, n.ahead=3)  ## 3 steps ahead forecasts
 }
 }

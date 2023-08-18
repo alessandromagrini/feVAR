@@ -8,7 +8,7 @@
   Package: \tab feVAR\cr
   Type: \tab Package\cr
   Version: \tab 0.1.1\cr
-  Date: \tab 2023-08-17\cr
+  Date: \tab 2023-08-18\cr
   License: \tab GPL-2
   }
 Fixed effects vector autoregressive models (feVARs) are an extension of vector autoregressive models to panel data, firstly introduced by Holtz-Eakin et al. (1988).

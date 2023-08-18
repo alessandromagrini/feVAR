@@ -1,4 +1,4 @@
-export(LAG,unirootTest,feVAR,residBPtest,IRF,forecastError)
+export(LAG,unirootTest,feVAR,autocorTest,IRF,forecastError)
 
 S3method(print, feVAR)
 S3method(summary, feVAR)
@@ -17,7 +17,7 @@ S3method(BIC, feVAR)
 S3method(print, unirootTest)
 S3method(print, predict.feVAR)
 S3method(plot, predict.feVAR)
-S3method(print, residBPtest.feVAR)
+S3method(print, autocorTest.feVAR)
 S3method(print, IRF.feVAR)
 S3method(plot, IRF.feVAR)
 

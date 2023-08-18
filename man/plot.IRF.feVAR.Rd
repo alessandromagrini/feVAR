@@ -4,7 +4,8 @@
 \description{Display impulse response functions (IRFs) for an estimated fixed effects vector autoregressive model.}
 \usage{
 \method{plot}{IRF.feVAR}(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, ylim=NULL, add.grid=TRUE,
-add.titles=FALSE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...)
+  add.titles=FALSE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2),
+  mgp=c(2.3,0.8,0), ...)
 }  
 \arguments{
   \item{x}{Object of class \code{IRF.feVAR}.}
@@ -16,7 +17,7 @@ add.titles=FALSE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0)
   \item{add.grid}{Logical value indicating whether the grid must be added. Default is \code{TRUE}.}
   \item{add.titles}{Logical value indicating whether a title must be added to each graphic. Default is \code{FALSE}.}
   \item{cex.points}{Expansion factor for points. If 0, points are suppressed. Default is 0.}
-  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically based on arguments \code{from} and \code{to}.}
+  \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically.}
   \item{mar}{Numerical vector of length 4 indicating the margin sizes in the following order: bottom, left, top, right. Default is c(3.5,3.5,2,2).}
   \item{mgp}{Numerical vector of length 3 indicating the location of axis labels, tick mark labels and tick marks, respectively, relative to the plot window. Default is c(2.3,0.8,0).}
   \item{...}{Further parameters to be passed to the generic method \code{plot}.}

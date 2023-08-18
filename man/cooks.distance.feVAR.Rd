@@ -18,7 +18,6 @@ Cook R.D. (1979). Influential observations in linear regression. \emph{Journal o
 }
 \seealso{\code{\link{feVAR}}.}
 \examples{
-\dontrun{
 data(agrisus2020)
 x_agr <- colnames(agrisus2020)[4:15]
 m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
@@ -26,5 +25,4 @@ m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
 
 m_agr_cook <- cooks.distance(m_agr)  ## cook's distances in each equation
 plot(m_agr_cook$'(maximum)')         ## display maximal distance per observation
-}
 }
