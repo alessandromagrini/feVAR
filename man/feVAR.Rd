@@ -1,7 +1,7 @@
 \name{feVAR}
 \alias{feVAR}
 \title{Estimation of a feVAR model}
-\description{Estimation of a fixed effects vector autoregressive model through bias-corrected ordinary least squares (Dhaene & Jochmans, 2016). If there are missing values in the endogenous variables, estimation is performed through the EM algorithm. Both panel, even unbalanced, and non-panel data are allowed.}
+\description{Estimation of a fixed effects vector autoregressive model through ordinary least squares. Both panel, even unbalanced, and non-panel data are allowed. In case of panel data, the bootstrap bias correction proposed by Everaert & Pozzi (2007) is applied.  If there are missing values in the endogenous variables, estimation is performed through the EM algorithm (Dempster et al., 1977).}
 \usage{feVAR(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nlags=NULL,
   nlags=NULL, trend=c("none","global","unit"), ic=c("bic","aic","aicc","hqic"),
   box.cox=1, ndiff=0, max.ndiff=2, auto.restrict=FALSE, imputation=TRUE,
@@ -50,7 +50,7 @@
 \details{
 Fixed effects vector autoregressive models are an extension of vector autoregressive models to panel data, firstly introduced by Holtz-Eakin et al. (1988).
 Let \eqn{Y_1,\ldots,Y_m} be \eqn{m} quantitative endogenous variables and \eqn{X_1,\ldots,X_q} be \eqn{q}, either quantitative or qualitative, exogenous variables.
-Also, let \eqn{\bm{y}_{i,t}} be an \eqn{m}-dimensional vector including the values of the endogenous variables observed on unit \eqn{i} at time \eqn{t}, and \eqn{\bm{x}_{i,t}} be a \eqn{q}-dimensional vector including the values of the exogenous variables observed on unit \eqn{i} at time \eqn{t}.
+Also, let \eqn{\bm{y}_{i,t}=(y_{i,t,1},\ldots,y_{i,t,m})} be an \eqn{m}-dimensional vector including the values of the endogenous variables observed on unit \eqn{i} at time \eqn{t}, and \eqn{\bm{x}_{i,t}=(x_{i,t,1},\ldots,x_{i,t,q})} be a \eqn{q}-dimensional vector including the values of the exogenous variables observed on unit \eqn{i} at time \eqn{t}.
 A fixed effect Vector Autoregressive Model (feVAR) of order \eqn{p\in\mathrm{N}_0} is defined as:
 \deqn{\bm{y}_{i,t} = \bm{\alpha}_i+\bm{\delta}_i t+\sum_{j=1}^p\bm{B}_j\bm{y}_{i,t-j}+\bm{G}\bm{x}_{i,t}+\bm{\varepsilon}_{i,t}}
 where:
@@ -70,7 +70,7 @@ In particular:
 \item{parameter \eqn{\bm{G}} contains, by column, the coefficients of the exogenous variables across all equations.}
 }
 
-The function \code{feVAR} allows both panel, even unbalanced, and non-panel data (single unit of observation). The bias-corrected ordinary least squares (Dhaene & Jochmans, 2016) is applied only in the former case, while ordinary least squares is used in the latter case.
+The function \code{feVAR} allows both panel, even unbalanced, and non-panel data (single unit of observation). Ordinary least squares estimation is used in both cases but, in case of panel data, the bootstrap bias correction proposed by Everaert & Pozzi (2007) is also applied.
 
 In case of missing values in the endogenous variables, provided that \code{imputation} is set to \code{TRUE}, estimation is performed through the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) as follows:
 \enumerate{
@@ -106,7 +106,7 @@ Cavanaugh, J.E. (1997), Unifying the derivations of the Akaike and corrected Aka
 
 Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. \emph{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38. 
 
-Dhaene G., Jochmans K. (2016). Bias-corrected estimation of panel vector autoregressions. \emph{Economics Letters}, 145: 98-103. DOI: 10.1016/j.econlet.2016.06.010
+Everaert G., Pozzi L. (2007). Bootstrap-based bias correction for dynamic panels. \emph{Journal of Economic Dynamics & Control}, 31: 1160-1184. DOI: 10.1016/j.jedc.2006.04.006
 
 Hannan E.J., Quinn B.G. (1979). The determination of the order of an autoregression. \emph{Journal of the Royal Statistical Society}, Series B, 41: 190-195.
 
@@ -121,7 +121,7 @@ Schwarz G.E. (1978). Estimating the dimension of a model. \emph{Annals of Statis
 data(djstock)
 x_dj <- colnames(djstock)[-1]
 
-# fit a model with p=1 on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
+# feVAR model with p=1 on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
 m_dj <- feVAR(var.names=x_dj, time="Date", data=djstock,
   box.cox=0, ndiff=1, nlags=1)
 summary(m_dj)  ## summary of estimation
@@ -143,7 +143,7 @@ summary(m_dj_auto_r)  ## summary of estimation
 data(agrisus2020)
 x_agr <- colnames(agrisus2020)[4:15]
 
-# fit a model with p=1 on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
+# feVAR model with p=1 on data in logarithmic differences ('box.cox'=0 and 'ndiff'=1)
 m_agr <- feVAR(var.names=x_agr, unit="Country", time="Year", exogenous="GDP",
   data=agrisus2020, box.cox=0, ndiff=1, nlags=1)
 summary(m_agr)  ## summary of estimation

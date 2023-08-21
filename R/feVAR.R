@@ -1,3 +1,14 @@
+## DA FARE
+#
+# - feVAR(): aggiungere tempi mancanti per bilanciare panel
+#            correzione bias OLS
+#
+# - predict.feVAR(): prendere variabili esogene da 'newdata'
+# - feVAR(): imputazione anche per variabili esogene
+#            stima HC
+#            gestire stagionalita'
+
+
 #####  PREPROCESSING  #####
 
 # apply box-cox transformation (auxiliary)
@@ -1039,6 +1050,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     isNA <- 1*apply(dataOrig[,var.names,drop=F],2,is.na)
     filldat <- dataOrig
     filldat[,var.names] <- apply(dataOrig[,var.names,drop=F],2,function(x){x[which(is.na(x))]<-mean(x,na.rm=T); x})
+    if(sum(trnd)>0) filldat$'(trend)' <- xtrend
     ll <- -Inf
     fine <- count <- 0
     while(fine==0) {
@@ -2044,12 +2056,14 @@ simulBeta <- function(model) {
   }
 
 # compute impulse response functions
-IRF <- function(model, n.ahead=10, nboot=100, level=0.95, quiet=FALSE) {
+IRF <- function(model, n.ahead=10, nboot=100, cumulative=FALSE, level=0.95, quiet=FALSE) {
   if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'",call.=F)
   if(!is.numeric(n.ahead)) n.ahead <- 10 else n.ahead <- round(max(c(1,n.ahead),na.rm=T))
   if(is.na(n.ahead)|n.ahead=="Inf") n.ahead <- 10
   if(!is.numeric(nboot)) nboot <- 0 else nboot <- round(max(c(0,nboot),na.rm=T))
   if(!is.numeric(level)) level <- 0.05 else level <- max(0,min(level,1,na.rm=T),na.rm=T)
+  cumulative <- cumulative[1]
+  if(is.na(cumulative)||(!is.logical(cumulative)|is.null(cumulative))) cumulative <- FALSE
   quiet <- quiet[1]
   if(is.na(quiet)||(!is.logical(quiet)|is.null(quiet))) quiet <- FALSE
   #
@@ -2066,7 +2080,11 @@ IRF <- function(model, n.ahead=10, nboot=100, level=0.95, quiet=FALSE) {
         }
       Psi[j+1,,] <- psi_j
       }
-    Psi
+    if(cumulative) {
+      apply(Psi,2:3,cumsum)
+      } else {
+      Psi
+      }
     }
   #
   m <- length(model$equations)
@@ -2090,6 +2108,7 @@ IRF <- function(model, n.ahead=10, nboot=100, level=0.95, quiet=FALSE) {
     } else {
     obj <- list(irf=irf)
     }
+  attr(obj,"cumulative") <- cumulative
   class(obj) <- "IRF.feVAR"
   obj
   }
@@ -2099,6 +2118,7 @@ print.IRF.feVAR <- function(x, ...) {
   cat("Impulse response functions","\n")
   cat("  number of variables: ",dim(x$irf)[2],"\n",sep="")
   cat("  number of steps ahead: ",dim(x$irf)[1]-1,"\n",sep="")
+  cat("  cumulative: ",ifelse(attr(x,"cumulative"),"yes","no"),"\n",sep="")
   if(length(x)>1) {
     cat("  confidence intervals: yes (level ",attr(x,"level"),")","\n",sep="")
     } else {

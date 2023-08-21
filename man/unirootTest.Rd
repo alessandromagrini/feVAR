@@ -55,9 +55,11 @@ data(agrisus2020)
 x_agr <- names(agrisus2020)[4:15]
 
 # tests on variables in level
+#  -> most variables are nonstationary
 unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020)
 
 # tests on variables in logarithmic differences
+#  -> stationarity confirmed for all variables excepting 'Manager_ratio'
 unirootTest(x_agr, unit="Country", time="Year", data=agrisus2020,
   box.cox=0, ndiff=1)
 }

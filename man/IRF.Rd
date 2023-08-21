@@ -2,11 +2,12 @@
 \alias{IRF}
 \title{Impulse response functions for a feVAR model}
 \description{Compute impulse response functions (IRFs) for an estimated fixed effects vector autoregressive model.}
-\usage{IRF(model, n.ahead=10, nboot=100, level=0.95, quiet=FALSE)}
+\usage{IRF(model, n.ahead=10, nboot=100, cumulative=FALSE, level=0.95, quiet=FALSE)}
 \arguments{
   \item{model}{Object of class \code{feVAR}.}
   \item{n.ahead}{The number of steps ahead, which must be no lower than 1. Default is 10. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
   \item{nboot}{The number of bootstrap resamples to estimate confidence intervals. Default is 100. If 0, confidence intervals are not estimated. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
+  \item{cumulative}{Logical value indicating whether cumulative IRFs must be computed. Default is \code{FALSE}.}
   \item{level}{The confidence level. Default is 0.95. If outside the interval \code{[0,1]}, it is set to 0.95.}
   \item{quiet}{Logical value indicating whether prompt messages must be suppressed. Default is \code{FALSE}.}
   }
@@ -18,7 +19,11 @@
 }
 Each of these three components is an array with three dimensions that correspond, respectively, to the number of steps ahead, to the endogenous variable originating the impulse, and to the endogenous variables receiving the impulse.}
 \note{The class \code{IRF.feVAR} has its own \code{plot} method. See \code{\link{plot.IRF.feVAR}} for details.}
-%\details{}
+\details{
+Impulse response functions (IRFs) at \eqn{k} steps ahead, say \eqn{\Phi_k=\frac{\partial\bm{y}_{i,t+k}}{\partial\bm{\varepsilon}_{i,t}}}, are computed based on the following recursive formula:
+\deqn{\Phi_k=\sum_{j=1}^{\min(k,p)}\Phi_{k-j}\bm{B}_j}
+where \eqn{\Phi_0} is the \eqn{m \times m} identity matrix, \eqn{\bm{B}_j} is the \eqn{m \times m} matrix of coefficients at lag \eqn{j}, and \eqn{p} is the lag order.
+}
 %\author{Alessandro Magrini <alessandro.magrini@unifi.it>}
 %\references{}
 \seealso{\code{\link{feVAR}}, \code{\link{plot.IRF.feVAR}}.}
