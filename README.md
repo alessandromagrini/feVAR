@@ -5,7 +5,7 @@ __Estimation and analysis of fixed effects vector autoregressive models__
 
 References:
 - Holtz-Eakin D., Newey W., Rosen H.S. (1988). Estimating vector autoregressions with panel data. _Econometrica_, 56(6), 1371-1395. DOI: <a href="https://doi.org/10.2307/1913103">10.2307/1913103</a>
-- Everaert G., Pozzi L. (2007). Bootstrap-based bias correction for dynamic panels. _Journal of Economic Dynamics & Control_, 31: 1160-1184. <a href="10.1016/j.jedc.2006.04.006">10.1016/j.jedc.2006.04.006</a>
+- Everaert G., Pozzi L. (2007). Bootstrap-based bias correction for dynamic panels. _Journal of Economic Dynamics & Control_, 31: 1160-1184. <a href="www.doi.org/10.1016/j.jedc.2006.04.006">10.1016/j.jedc.2006.04.006</a>
 - Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _Journal of the Royal Statistical Society_, Series B, 39(1): 1-38. 
 
 R (The R Project for Statistical Computing) needs to be installed on your system in order
