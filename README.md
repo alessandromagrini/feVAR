@@ -1,11 +1,11 @@
 # feVAR
 __Estimation and analysis of fixed effects vector autoregressive models__
 
-`feVAR` is an R package for estimation and analysis of fixed effects Vector AutoRegressive (feVAR) models (see, e.g., Holtz-Eakin et al., 1988). The package implements the bootstrap bias correction for ordinary least squares estimation proposed by Everaert & Pozzi (2007) and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
+`feVAR` is an R package for estimation and analysis of fixed effects Vector AutoRegressive (feVAR) models (see, e.g., Holtz-Eakin et al., 1988). The package implements the half panel jackknife bias correction (Dhaene & Jochmans, 2015) to obtain unbiased estimates and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
 
 References:
 - Holtz-Eakin D., Newey W., Rosen H.S. (1988). Estimating vector autoregressions with panel data. _Econometrica_, 56(6), 1371-1395. DOI: <a href="https://doi.org/10.2307/1913103">10.2307/1913103</a>
-- Everaert G., Pozzi L. (2007). Bootstrap-based bias correction for dynamic panels. _Journal of Economic Dynamics & Control_, 31: 1160-1184. <a href="https://www.doi.org/10.1016/j.jedc.2006.04.006">10.1016/j.jedc.2006.04.006</a>
+- Dhaene G., Jochmans K. (2015). Split-panel jackknife estimation of fixed-effect models. _The Review of Economic Studies_, 82(3): 991-1030. DOI: <a href="https://www.doi.org/10.1093/restud/rdv007">10.1093/restud/rdv007</a>
 - Dempster A.P., Laird N.M., Rubin D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _Journal of the Royal Statistical Society_, Series B, 39(1): 1-38. 
 
 R (The R Project for Statistical Computing) needs to be installed on your system in order
