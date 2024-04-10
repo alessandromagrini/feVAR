@@ -2,14 +2,16 @@
 \alias{IRF}
 \title{Impulse response functions for a feVAR model}
 \description{Compute impulse response functions (IRFs) for an estimated fixed effects vector autoregressive model.}
-\usage{IRF(model, n.ahead=10, nboot=100, cumulative=FALSE, level=0.95, quiet=FALSE)}
+\usage{IRF(model, n.ahead=10, cumulative=FALSE, orthogonal=FALSE, order=NULL, nboot=100,
+  level=0.95)}
 \arguments{
   \item{model}{Object of class \code{feVAR}.}
   \item{n.ahead}{The number of steps ahead, which must be no lower than 1. Default is 10. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
-  \item{nboot}{The number of bootstrap resamples to estimate confidence intervals. Default is 100. If 0, confidence intervals are not estimated. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
   \item{cumulative}{Logical value indicating whether cumulative IRFs must be computed. Default is \code{FALSE}.}
+  \item{orthogonal}{Logical value indicating whether orthogonal IRFs must be computed. Default is \code{FALSE}.}
+  \item{order}{Vector indicating the order of orthogonalization. It is possible to provide either the names or the numerical identifiers of endogenous variables. If \code{NULL} (the default), the original order of endogenous variables is used. Ignored if \code{orthogonal} is \code{FALSE}.}
+  \item{nboot}{The number of bootstrap resamples to compute confidence intervals. Default is 100. If not numeric or 0, confidence intervals are not computed.}
   \item{level}{The confidence level. Default is 0.95. If outside the interval \code{[0,1]}, it is set to 0.95.}
-  \item{quiet}{Logical value indicating whether prompt messages must be suppressed. Default is \code{FALSE}.}
   }
 \value{Object of class \code{IRF.feVAR}, which is a list with the following three components:
 \itemize{
@@ -17,12 +19,14 @@
   \item{\code{irf_sx}, }{including the lower bound of confidence intervals for IRFs,}
   \item{\code{irf_dx}, }{including the upper bound of confidence intervals for IRFs.}
 }
-Each of these three components is an array with three dimensions that correspond, respectively, to the number of steps ahead, to the endogenous variable originating the impulse, and to the endogenous variables receiving the impulse.}
+Each of these three components is an array with three dimensions that correspond, respectively, to the number of steps ahead, to the endogenous variable receiving the impulse, and to the endogenous variables originating the impulse.}
 \note{The class \code{IRF.feVAR} has its own \code{plot} method. See \code{\link{plot.IRF.feVAR}} for details.}
 \details{
 Impulse response functions (IRFs) at \eqn{k} steps ahead, say \eqn{\Phi_k=\frac{\partial\bm{y}_{i,t+k}}{\partial\bm{\varepsilon}_{i,t}}}, are computed based on the following recursive formula:
 \deqn{\Phi_k=\sum_{j=1}^{\min(k,p)}\Phi_{k-j}\bm{B}_j}
-where \eqn{\Phi_0} is the \eqn{m \times m} identity matrix, \eqn{\bm{B}_j} is the \eqn{m \times m} matrix of coefficients at lag \eqn{j}, and \eqn{p} is the lag order.
+where \eqn{\Phi_0} is a lower triangular \eqn{m \times m} matrix with 1s in the main diagonal,
+\eqn{\bm{B}_j} is the \eqn{m \times m} matrix of coefficients at lag \eqn{j}, and \eqn{p} is the lag order.
+Matrix \eqn{\Phi_0} is set equal to the \eqn{m \times m} identity matrix in order to obtain simple (non-orthogonal) IRFs, otherwise it is obtained through Cholesky decomposition.
 }
 %\author{Alessandro Magrini <alessandro.magrini@unifi.it>}
 %\references{}

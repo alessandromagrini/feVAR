@@ -8,7 +8,7 @@
 \arguments{
   \item{object}{Object of class \code{feVAR}.}
   \item{n.ahead}{The number of steps ahead of predictions. If equal to 0 (the default), in-sample predictions are returned. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
-  \item{unit.id}{Name or numerical identifier of the units of observation for which predictions must be made. Ignored in case of a single unit of observation. If \code{NULL} (the default), predictions are performed for all units of observation.}
+  \item{unit.id}{Vector including the names or the numerical identifiers of cross-sectional units for which predictions must be made. Ignored if there is a single cross-sectional unit. If \code{NULL} (the default), predictions are performed for all cross-sectional units.}
   \item{newdata}{Object of class \code{data.frame} where to look at future values of exogenous variables. Ignored if \code{n.ahead} is equal to 0. If \code{NULL} (the default) and \code{n.ahead} is greater than 0, exogenous variables are assumed to keep the latest observed value.}
   \item{level}{Confidence level of prediction intervals. Default is 0.95. If outside the interval \code{[0,1]}, it is set to 0.95.}
   \item{subset}{For internal use only.}
@@ -16,7 +16,7 @@
 }
 \value{An object of class \code{predict.feVAR}, which is a list with the following four components:
 \itemize{
-  \item{\code{predicted}: }{a named list of objects of class \code{data.frame}, one for each endogenous variable. Each data frame includes one record for each observation, and the following variables: unit name (only in case of panel data), time of observation, point predictions, lower and upper bound of prediction intervals;}
+  \item{\code{predicted}: }{a named list of objects of class \code{data.frame}, one for each endogenous variable. Each data frame includes one record for each observation, and the following variables: name of the cross-sectional unit (only in case of panel data), time point, point predictions, lower and upper bound of prediction intervals;}
   \item{\code{observed}: }{an object of class \code{data.frame} containing the observed data;}
   \item{\code{n.ahead}: }{the number of steps ahead of the predictions;}
   \item{\code{call}: }{component \code{call} of the object of class \code{feVAR} passed to argument \code{object}. See 'Value' of the function \code{\link{feVAR}}.}

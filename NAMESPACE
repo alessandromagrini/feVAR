@@ -1,4 +1,4 @@
-export(LAG,unirootTest,feVAR,autocorTest,IRF,forecastError)
+export(LAG,unirootTest,feVAR,autocorTest,grangerTest,VMA,IRF,forecastError)
 
 S3method(print, feVAR)
 S3method(summary, feVAR)
@@ -18,6 +18,7 @@ S3method(print, unirootTest)
 S3method(print, predict.feVAR)
 S3method(plot, predict.feVAR)
 S3method(print, autocorTest.feVAR)
+S3method(print, grangerTest.feVAR)
 S3method(print, IRF.feVAR)
 S3method(plot, IRF.feVAR)
 

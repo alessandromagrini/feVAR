@@ -5,7 +5,7 @@
 \usage{autocorTest(model, max.lag=NULL)}
 \arguments{
   \item{model}{Object of class \code{feVAR}.}
-  \item{max.lag}{Maximum lag at which to perform the test, which must be no lower than 1 and no greater than \code{T-5}, where \code{T} is the minimum number of time points across all units of observations. If \code{NULL} (the default), it is set to \code{sqrt(T)}. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
+  \item{max.lag}{Maximum lag at which to perform the test, which must be no lower than 1 and no greater than \code{T-5}, where \code{T} is the minimum number of time points across all cross-sectional units. If \code{NULL} (the default), it is set to \code{sqrt(T)}. If an invalid value is provided, it is automatically replaced by the nearest valid one.}
 }
 \value{An object of class \code{autocorTest.feVAR}, which is a list with two components: \code{residual}, containing the results of the test on residuals, and \code{sq.residual}, containing the results of the test on squared residuals.
 Each of these two components is a list with the following two components:
@@ -19,7 +19,7 @@ Each of these two components is a list with the following two components:
 The Ljung-Box test (Ljung & Box, 1978) checks the hypothesis of no autocorrelation up to a specific lag.
 The test is based on the fact that, under the hypothesis of no autocorrelation up to lag \eqn{k}, it holds:
 \deqn{Q_k=T(T+2)\sum_{j=1}^k\frac{\hat{\rho}_j^2}{T-k}\approx\chi^2_k}
-where \eqn{\hat{\rho}_j} is the sample autocorrelation at lag \eqn{j}, \eqn{~T} is the total number of time points across all units of observation, and \eqn{\chi^2_k} is a Chi-squared random variable with \eqn{k} degrees of freedom.
+where \eqn{\hat{\rho}_j} is the sample autocorrelation at lag \eqn{j}, \eqn{~T} is the number of time points, and \eqn{\chi^2_k} is a Chi-squared random variable with \eqn{k} degrees of freedom.
 See 'Details' of the function \code{\link{plot.feVAR}} for details on how to compute the autocorrelation of residuals and of squared residuals in case of panel data.
 
 Performing the test on the residuals provides an indication about the hypothesis of serially uncorrelated errors, while performing the test on the squared residuals provides an indication about the hypothesis of homoschedastic errors.

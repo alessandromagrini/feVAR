@@ -5,12 +5,13 @@
 \usage{unirootTest(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0, max.nlags=NULL)}
 \arguments{
   \item{var.names}{Character vector including the name of the variables to undergo the tests.}
-  \item{unit}{Character containing the name of the variable that identifies the units of observation. If \code{NULL} (the default), a single unit of observation is assumed.}
+  \item{unit}{Character containing the name of the variable that identifies the cross-sectional units. If \code{NULL} (the default), a single cross-sectional unit is assumed.}
   \item{time}{Character containing the name of the time variable, which must be in numeric or date format. If \code{NULL} (the default), data are assumed to be temporally ordered.}
   \item{data}{Object of class \code{data.frame} containing the variables in \code{var.names}, \code{unit} and \code{time}.}
-  \item{box.cox}{Named vector including the \eqn{\lambda} values of the Box-Cox transformation (Box & Cox, 1964) for variables in \code{var.names}. If \code{box.cox} has no names and length greater than one, the same ordering as in \code{var.names} is assumed. If \code{box.cox} has no names and length equal to one, the same \eqn{\lambda} value is used for all variables in \code{var.names}. Valid \eqn{\lambda} values are in the interval \code{[-2,2]}. All invalid values are automatically replaced with the nearest valid ones. Default is 1, meaning no transformation for all variables. See 'Details'.}
-  \item{ndiff}{Named vector including the number of differences for variables in \code{var.names}. If \code{ndiff} has no names and length greater than one, the same ordering as in \code{var.names} is assumed. If \code{ndiff} has no names and length equal to one, the same number of differences is used for all variables in \code{var.names}. The number of differences cannot exceed \code{T-5}, where \code{T} is the minimum number of time points across all units of observations. All invalid values are automatically replaced with the nearest valid ones. Default is 0, meaning no differencing for all variables.}
-  \item{max.nlags}{The maximum lag to consider in the tests, which must be no greater than \code{T-5}, where \code{T} is the minimum number of time points across all units of observations. If \code{NULL} (the default), it is set to \code{sqrt(T)}. If an invalid value is provided, it is automatically replaced by the nearest valid one. See 'Details'.}
+  \item{box.cox}{Named vector including the \eqn{\lambda} values of the Box-Cox transformation (Box & Cox, 1964) for variables in \code{var.names}. If \code{box.cox} has no names and length equal to one, the same \eqn{\lambda} value is used for all variables in \code{var.names}. If \code{box.cox} has no names and length greater than one, the same ordering as in \code{var.names} is assumed. Valid \eqn{\lambda} values are in the interval \code{[-2,2]}. All invalid values are automatically replaced with the nearest valid ones.
+If \code{box.cox} has length greater than one or is \code{NULL}, all missing \eqn{\lambda} values are determined automatically through maximum likelihood estimation. Default is 1, meaning no transformation for all variables. See 'Details'.}
+  \item{ndiff}{Named vector including the number of differences for variables in \code{var.names}. If \code{ndiff} has no names and length greater than one, the same ordering as in \code{var.names} is assumed. If \code{ndiff} has no names and length equal to one, the same number of differences is used for all variables in \code{var.names}. The number of differences cannot exceed \code{T-5}, where \code{T} is the minimum number of time points across all cross-sectional units. All invalid values are automatically replaced with the nearest valid ones. Default is 0, meaning no differencing for all variables.}
+  \item{max.nlags}{The maximum lag to consider in the tests, which must be no greater than \code{T-5}, where \code{T} is the minimum number of time points across all cross-sectional units. If \code{NULL} (the default), it is set to \code{sqrt(T)}. If an invalid value is provided, it is automatically replaced with the nearest valid one. See 'Details'.}
 }
 \value{An object of class \code{unirootTest}, which is a list including a list for each variable in \code{var.names}, each with the following components:
 \itemize{
@@ -23,7 +24,7 @@
 }
 \note{The class \code{unirootTest} has its own \code{print} method that reports the p-values of the tests for each endogenous variable.}
 \details{Only quantitative variables can undergo the tests.
-In order to keep statistical power as high as possible in presence of missing values, they are replaced by the most recent observed value (Ryan & Giles, 1998).
+In order to keep statistical power as high as possible in presence of missing values, they are replaced with the most recent observed value (Ryan & Giles, 1998).
 
 The Box-Cox transformation for variable is \eqn{Y} defined as:
 \deqn{f(y;\lambda,\eta)=I(\lambda\neq 0)\cdot\frac{(y+\eta)^\lambda-1}{\lambda}+I(\lambda=0)\cdot\log(y+\eta)}

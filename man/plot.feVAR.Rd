@@ -7,7 +7,7 @@
   titles=NULL, las=0, mfrow=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...)}
 \arguments{
   \item{x}{Object of class \code{feVAR}.}
-  \item{type}{Type of diagnostic, which should be one among 'ts' (1): time series plot of residuals, 'acf' (2): autocorrelograms of residuals, 'acf2' (3): autocorrelograms of squared residuals, 'fitVSres' (4): fitted values versus residuals, and 'qqnorm' (5): normal quantile plot of residuals.}
+  \item{type}{Type of diagnostic, which must be one among 'ts' (1): time series plot of residuals, 'acf' (2): autocorrelograms of residuals, 'acf2' (3): autocorrelograms of squared residuals, 'fitVSres' (4): fitted values versus residuals, and 'qqnorm' (5): normal quantile plot of residuals.}
   \item{var.names}{Character vector indicating the name of endogenous variables for which the diagnostic must be displayed.}
   \item{max.nlags}{The number of lags to be displayed in the autocorrelograms. If \code{NULL} (the default), it is determined automatically. If an invalid value is provided, it is automatically replaced by the nearest valid one. Ignored if \code{type} is not equal to 'acf' or 'acf2'.}
   \item{signif}{The significance level of the test for no autocorrelation in the autocorrelograms. Default is 0.05. If outside the interval \code{[0,1]}, it is set to 0.05. Ignored if \code{type} is not equal to 'acf' or 'acf2'.}
@@ -27,7 +27,7 @@
 \details{
 In case of panel data, the autocorrelation of residuals at lag \eqn{k} is computed as:
 \deqn{\rho_k=\frac{\sum_{i=1}^n\sum_{t=1}^{T_i-k}e_{i,t}~e_{i,t+k}}{\sum_{i=1}^n\sum_{t=1}^{T_i}e_{i,t}^2}}
-where \eqn{e_{i,t}} is the residual for unit \eqn{i} at time \eqn{t}, \eqn{~T_i} is the number of time points for unit \eqn{i}, and \eqn{n} is the number of units.
+where \eqn{e_{i,t}} is the residual for cross-sectional unit \eqn{i} at time \eqn{t}, \eqn{~T_i} is the number of time points for cross-sectional unit \eqn{i}, and \eqn{n} is the number of cross-sectional units.
 The autocorrelation of squared residuals is computed analogously by replacing \eqn{e_{i,t}} with \eqn{e_{i,t}^2} for each \eqn{i} and \eqn{t}.
 }
 \note{

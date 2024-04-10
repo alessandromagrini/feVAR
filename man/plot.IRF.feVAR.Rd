@@ -4,7 +4,7 @@
 \description{Display impulse response functions (IRFs) for an estimated fixed effects vector autoregressive model.}
 \usage{
 \method{plot}{IRF.feVAR}(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, ylim=NULL, add.grid=TRUE,
-  add.titles=FALSE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2),
+  add.titles=TRUE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2),
   mgp=c(2.3,0.8,0), ...)
 }  
 \arguments{
@@ -15,7 +15,7 @@
   \item{labels}{Character vector containing the labels for the endogenous variables. If the vector has names, labels are assigned based on them, otherwise they are assigned in the same order of the endogenous variables. If \code{NULL} (the default), the names of endogenous variables are used as labels.}
   \item{ylim}{Numerical vector of length 2 indicating the limits of the y-axis.}
   \item{add.grid}{Logical value indicating whether the grid must be added. Default is \code{TRUE}.}
-  \item{add.titles}{Logical value indicating whether a title must be added to each graphic. Default is \code{FALSE}.}
+  \item{add.titles}{Logical value indicating whether a title must be added to each graphic. Default is \code{TRUE}.}
   \item{cex.points}{Expansion factor for points. If 0, points are suppressed. Default is 0.}
   \item{mfrow}{Numerical vector of the form \code{c(nr,nc)}: graphics are displayed in an \code{nr}-by-\code{nc} array on the device by rows. If \code{NULL} (the default), it is determined automatically.}
   \item{mar}{Numerical vector of length 4 indicating the margin sizes in the following order: bottom, left, top, right. Default is c(3.5,3.5,2,2).}

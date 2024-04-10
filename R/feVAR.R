@@ -1,9 +1,12 @@
 ## DA FARE
 #
-# - feVAR(): aggiungere tempi mancanti per bilanciare panel
-#            correzione bias OLS
+# - feVAR(): aggiungere tempi mancanti come record missing
+#            imputazione: troncamento per t<L
+#            HPJ dentro model reduction
+#            system-wise model reduction
 #
 # - predict.feVAR(): prendere variabili esogene da 'newdata'
+#
 # - feVAR(): imputazione anche per variabili esogene
 #            stima HC
 #            gestire stagionalita'
@@ -40,14 +43,22 @@ makeBoxCox <- function(x, par, a=NULL) {
   }
 
 # invert box-cox transformation (auxiliary)
-invBoxCox <- function(z, par, a) {
+invBoxCox <- function(z, par, a, ymin=NULL) {
   if(par==1) {
     z
     } else {
     if(par==0) {
       exp(z)-a  
       } else {
-      (z*par+1)^(1/par)-a
+      y <- (z*par+1)^(1/par)-a
+      if(sum(is.nan(y))>0) {
+        if(is.null(ymin)) {
+          y[which(is.na(y))] <- -a
+          } else {
+          y[which(is.na(y))] <- ymin
+          }
+        }
+      y
       }
     }
   }
@@ -150,20 +161,13 @@ oneTest <- function(x, unit, max.lag, trend, check) {
     adfComb <- function(p) {
       p[which(p<=0)] <- 1e-4
       p[which(p>=1)] <- 1-1e-4
-      ind <- which(!is.na(p))
-      if(length(ind)>0) {
-        m <- length(ind)
-        logp <- qnorm(p[ind])
-        rhat <- 1-var(logp,na.rm=T)
-        rstar <- max(rhat,-1/(m-1))
-        auxz <- sum(logp,na.rm=T)/sqrt(m*(1+(m-1)*(rstar+0.2*sqrt(2/(m+1))*(1-rstar))))
-        #auxz <- sum(logp,na.rm=T)/sqrt(m)
-        #c(p,'(combined)'=2*pnorm(-abs(auxz)))
-        2*pnorm(-abs(auxz))
-        } else {
-        NaN
-        #c(p,'(combined)'=NaN)
-        }
+      m <- length(p)
+      logp <- qnorm(p)
+      rhat <- 1-var(logp,na.rm=T)
+      rstar <- max(rhat,-1/(m-1))
+      auxz <- sum(logp,na.rm=T)/sqrt(m*(1+(m-1)*(rstar+0.2*sqrt(2/(m+1))*(1-rstar))))
+      #auxz <- sum(logp,na.rm=T)/sqrt(m)
+      2*pnorm(-abs(auxz))
       }
     #
     kpssComb <- function(stat) {
@@ -180,10 +184,10 @@ oneTest <- function(x, unit, max.lag, trend, check) {
     #
     res1 <- lapply(res1, function(z){names(z)<-gr; z})
     names(res1) <- names(iadf)
-    res1$p.value <- adfComb(res1$p.value)
+    if(length(res1$p.value)>1) res1$p.value <- adfComb(res1$p.value)
     res2 <- lapply(res2, function(z){names(z)<-gr; z})
     names(res2) <- names(ikpss)
-    res2$p.value <- kpssComb(res2$statistic)
+    if(length(res2$p.value)>1) res2$p.value <- kpssComb(res2$statistic)
     res <- list()
     res$statistic <- cbind(adf=res1$statistic,kpss=res2$statistic)
     res$lag.selected <- cbind(adf=res1$lag.selected,kpss=res2$lag.selected)
@@ -229,11 +233,11 @@ adfFun <- function(x, max.lag, trend) {
                        c(-3.44, -3.13, -2.87, -2.57, -1.57, -0.44, -0.07, 0.24, 0.61),
                        c(-3.42, -3.12, -2.86, -2.57, -1.57, -0.44, -0.08, 0.23, 0.6))
         }
-      tablen <- dim(table)[2]
+      tablen <- ncol(table)
       tableT <- c(25, 50, 100, 250, 500, 1e+05)
       tablep <- c(0.01, 0.025, 0.05, 0.1, 0.5, 0.9, 0.95, 0.975, 0.99)
       tableipl <- numeric(tablen)
-      for(i in (1:tablen)) {
+      for(i in 1:tablen) {
         tableipl[i] <- approx(tableT,table[,i],n,rule=2)$y
         }
       PVAL <- approx(tableipl,tablep,STAT,rule=2)$y
@@ -405,7 +409,7 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
   for(i in 1:length(var.names)) {
     if(isQuant(data[,var.names[i]])) nomiQ <- c(nomiQ,var.names[i])
     }
-  if(is.null(box.cox)) {
+  if(is.null(box.cox) | identical(box.cox,NA)) {
     if(quiet==F) cat("Automated Box-Cox transformation ... ")
     bcvet <- rep(NA,length(var.names))
     names(bcvet) <- var.names
@@ -425,11 +429,20 @@ preProcess <- function(var.names, unit=NULL, time=NULL, data, box.cox=1, ndiff=0
       } else if(is.null(names(box.cox))) {
       box.cox <- box.cox[1:length(var.names)]
       names(box.cox) <- var.names
-      box.cox[which(is.na(box.cox))] <- 1
       } else {
       box.cox <- box.cox[var.names]
       names(box.cox) <- var.names
-      box.cox[which(is.na(box.cox))] <- 1
+      }
+    if(sum(is.na(box.cox))>0) {
+      autobc <- intersect(names(which(is.na(box.cox))),nomiQ)
+      #box.cox[autobc] <- 1  <--
+      if(length(autobc)>0) {
+        if(quiet==F) cat("Automated Box-Cox transformation ... ")
+        for(i in 1:length(autobc)) {
+          box.cox[autobc[i]] <- attr(makeBoxCox(data[,autobc[i]], NULL), "lambda")
+          }
+        }
+      if(sum(is.na(box.cox))>0) box.cox[which(is.na(box.cox))] <- 1
       }
     if(sum(box.cox< -2)>0) {  
       box.cox[which(box.cox< -2)] <- -2  ## <--
@@ -745,9 +758,9 @@ lagCalc <- function(var.names, unit, data) {
   }
 
 # get number of lags per variable (auxiliary)
-getLags <- function(model) {
-  bvet <- model$coefficients
-  xstr <- names(bvet)[grep("^LAG\\(",names(bvet))]
+getLags <- function(regmod) {
+  bnames <- gsub("`","",names(regmod$coefficients))
+  xstr <- bnames[grep("^LAG\\(",bnames)]
   if(length(xstr)>0) {
     xnam <- xlag <- c()
     for(i in 1:length(xstr)) {
@@ -786,7 +799,8 @@ createBeta <- function(modList) {
         for(j in 1:length(istr)) {
           ijl <- ilag[j,"lag"]
           ijx <- ilag[j,"x"]
-          betaList[[ijl]][ijx,xnam[i]] <- icoef[istr[j]]
+          if(is.na(icoef[istr[j]])) icoef[istr[j]] <- 0
+          betaList[[ijl]][xnam[i],ijx] <- icoef[istr[j]]
           }
         }
       }
@@ -797,6 +811,35 @@ createBeta <- function(modList) {
     betaList[[1]] <- imat
     }
   betaList
+  }
+
+# create gamma matrix (auxiliary)
+createGamma <- function(modList, exogenous) {
+  if(!is.null(exogenous)) {
+    exL <- list()
+    for(i in 1:length(modList)) {
+      exnam <- c()
+      imod <- modList[[i]]
+      for(j in 1:length(exogenous)) {
+        if(exogenous[j]%in%names(imod$xlevels)) {
+          exnam <- c(exnam,paste0(exogenous[j],imod$xlevels[[exogenous[[j]]]]))
+          } else {
+          exnam <- c(exnam,exogenous[j])
+          }
+        }
+      bhat <- imod$coefficients
+      aux <- intersect(names(bhat),exnam)
+      if(length(aux)>0) exL[[i]] <- bhat[aux]
+      }
+    exnamOK <- unique(do.call(c,lapply(exL,names)))
+    Gmat <- matrix(0,nrow=length(modList),ncol=length(exnamOK)) 
+    rownames(Gmat) <- names(modList)
+    colnames(Gmat) <- exnamOK
+    for(i in 1:length(exL)) {
+      if(length(exL[[i]])>0) Gmat[names(modList)[i],names(exL[[i]])] <- exL[[i]]
+      }
+    Gmat
+    }
   }
 
 # compute fixed effects (auxiliary)
@@ -841,7 +884,7 @@ fixeffCalc <- function(regList, data, call) {
         iym <- sapply(split(data[,istr[1]], data[,unam]), mean, na.rm=T)
         if(length(istr)>1) {
           iX <- model.matrix(ireg)
-          iX <- iX[,setdiff(colnames(iX),"(Intercept)")]
+          iX <- iX[,setdiff(colnames(iX),"(Intercept)"),drop=F]
           ixm <- lapply(split(data.frame(iX), data[rownames(iX),unam]), colMeans, na.rm=T)
           ialph <- c()
           for(j in 1:length(iym)) {
@@ -858,7 +901,7 @@ fixeffCalc <- function(regList, data, call) {
   }
 
 # MASTER FUNCTION
-feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nlags=NULL, nlags=NULL, trend=c("none","global","unit"), ic=c("bic","aic","aicc","hqic"), box.cox=1, ndiff=0, max.ndiff=2, auto.restrict=FALSE, imputation=TRUE, em.tol=1e-4, em.maxiter=100, quiet=FALSE) {
+feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nlags=NULL, nlags=NULL, trend=c("none","global","unit"), box.cox=1, ndiff=0, max.ndiff=2, hpj.bc=FALSE, ic=c("bic","aic","aicc","hqic"), auto.restrict=FALSE, em=TRUE, em.tol=1e-4, em.maxiter=100, quiet=FALSE) {
   #
   if(missing(data)) stop("Argument 'data' is missing",call.=F)
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame",call.=F)
@@ -920,10 +963,12 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
       if(length(auxch4)>0) stop("Variable '",auxch4[1],"' appears in both arguments 'time' and 'exogenous'",call.=F)
       }
     }
+  hpj.bc <- hpj.bc[1]
+  if(is.na(hpj.bc)||(!is.logical(hpj.bc)|is.null(hpj.bc))) hpj.bc <- FALSE
   auto.restrict <- auto.restrict[1]
   if(is.na(auto.restrict)||(!is.logical(auto.restrict)|is.null(auto.restrict))) auto.restrict <- FALSE
-  imputation <- imputation[1]
-  if(is.na(imputation)||(!is.logical(imputation)|is.null(imputation))) imputation <- FALSE
+  em <- em[1]
+  if(is.na(em)||(!is.logical(em)|is.null(em))) em <- TRUE
   if(!is.numeric(em.tol)) em.tol <- 1e-4 else em.tol <- round(max(c(0,em.tol),na.rm=T))
   if(is.na(em.tol)|em.tol=="Inf") em.tol <- 1e-4
   if(!is.numeric(em.maxiter)) em.maxiter <- 100 else em.maxiter <- round(max(c(1,em.maxiter),na.rm=T))
@@ -1015,12 +1060,13 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
     } else {
     penaltyFun <- function(npar,n){npar*log(n)}
     }
-  if(imputation) {
+  if(em) {
     emImp <- sum(is.na(dataOrig[,var.names]))>0  ## <-- imputare anche le esogene
     } else {
     emImp <- F
     }
-  if(is.null(nlags)&(auto.restrict|emImp)) nlags <- max.nlags
+  #if(is.null(nlags)&(auto.restrict|emImp)) nlags <- max.nlags  ## <--
+  if(is.null(nlags)&emImp) nlags <- max.nlags
   if(emImp==F) {
     if(is.null(nlags)) {
       icval <- c()
@@ -1038,7 +1084,7 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
       mod <- fitEquations(var.names=var.names, unit=unit, exogenous=exogenous, data=data, nlags=nlags, interc=interc, trnd=trnd, penaltyFun=penaltyFun, del=0, quiet=quiet)
       }
     modOK <- list(equations=mod)
-    modOK$call <- list(var.names=var.names, unit=unit, time=time, exogenous=exogenous, trend=trend, box.cox=attr(data,"box.cox"), ndiff=attr(data,"ndiff"))
+    modOK$call <- list(var.names=var.names, unit=unit, time=time, exogenous=exogenous, trend=trend, box.cox=attr(data,"box.cox"), ndiff=attr(data,"ndiff"), hpj.bc=hpj.bc)
     modOK$data.orig <- dataOrig[,c(unit,time,var.names,exogenous)]
     if(sum(trnd)>0) {
       modOK$data.used <- data[,c(unit,time,var.names,exogenous,"(trend)")]
@@ -1068,11 +1114,11 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
         auxmod$data.used <- auxdat[,c(unit,time,var.names,exogenous)]
         }
       resMat <- na.omit(do.call(cbind, lapply(auxmod$equations, residuals)))
-      auxmod$Sigma <- cov(resMat, use="complete.obs")
+      auxmod$Sigma <- cov(resMat, use="complete.obs")*(nrow(resMat)-1)/nrow(resMat)
       #S <- matrix(0,nrow=length(var.names),ncol=length(var.names))
       #rownames(S) <- colnames(S) <- var.names
       #for(i in 1:nrow(resMat)) S <- S+resMat[i,]%*%t(resMat[i,])
-      #auxmod$Sigma <- S/nrow(na.omit(resMat))
+      #auxmod$Sigma <- S/nrow(resMat)
       class(auxmod) <- "feVAR"
       auxll <- logLik(auxmod)[1]
       if(auxll<ll) {
@@ -1122,20 +1168,26 @@ feVAR <- function(var.names, unit=NULL, time=NULL, exogenous=NULL, data, max.nla
         }
       }
     }
+  #Qmat <- QmatCalc(modOK$equations)
   if(auto.restrict) modOK <- restrictFit(modOK, interc=interc, ic=ic, quiet=quiet)
+  if(hpj.bc) modOK <- hpjBC(modOK)
   modOK$intercepts <- fixeffCalc(modOK$equations, data=modOK$data.orig, call=modOK$call)
   modOK$Beta <- createBeta(modOK$equations)
+  modOK$Gamma <- createGamma(modOK$equations, exogenous)
   resMat <- na.omit(do.call(cbind, lapply(modOK$equations, residuals)))
-  modOK$Sigma <- cov(resMat, use="complete.obs")
+  modOK$Sigma <- cov(resMat, use="complete.obs")*(nrow(resMat)-1)/nrow(resMat)
   #S <- matrix(0,nrow=length(var.names),ncol=length(var.names))
   #rownames(S) <- colnames(S) <- var.names
   #for(i in 1:nrow(resMat)) S <- S+resMat[i,]%*%t(resMat[i,])
-  #modOK$Sigma <- S/nrow(na.omit(resMat))
+  #modOK$Sigma <- S/nrow(resMat)
+  #modOK$Q <- Qmat
   modOK$companion <- compMat(modOK$Beta)
-  modOK$eigen.module <- Mod(eigen(modOK$companion)$values)
+  eig <- Mod(eigen(modOK$companion)$values)
+  #names(eig) <- colnames(modOK$companion)
+  modOK$eigen.module <- eig
   modOK
   }
-  
+
 # function for automated restriction (auxiliary)
 restrictFit <- function(model, interc, ic, quiet) {
   nomi <- model$call$var.names
@@ -1195,9 +1247,37 @@ restrictFit <- function(model, interc, ic, quiet) {
   model
   }
 
+# HPJ bias correction (auxiliary)
+hpjBC <- function(x) {
+  data <- x$data.used
+  xtime <- x$call$time
+  tlev <- sort(unique(data[,xtime]))
+  if((length(tlev)%%2)==0) {
+    ind1 <- which(data[,xtime]<=tlev[length(tlev)/2])
+    ind2 <- setdiff(1:nrow(data), ind1)
+    } else {
+    ind1 <- which(data[,xtime]<=tlev[(length(tlev)+1)/2])
+    ind2 <- which(data[,xtime]>=tlev[(length(tlev)+1)/2])
+    }
+  regList <- x$equations
+  for(i in 1:length(regList)) {
+    b <- regList[[i]]$coefficients
+    ireg <- regList[[i]]
+    iform <- ireg$call$formula
+    imod1 <- lm(iform, data=data[ind1,])
+    imod2 <- lm(iform, data=data[ind2,])
+    ireg$coefficients <- 2*b-(imod1$coefficients+imod2$coefficients)/2
+    ireg$fitted.values <- fit <- na.omit(predict(ireg))
+    ireg$residuals <- data[names(fit),names(regList)[i]]-fit
+    regList[[i]] <- ireg
+    }
+  x$equations <- regList
+  x
+  }
+
 # print method for class 'feVAR'
 print.feVAR <- function(x, ...) {
-  cat("Fixed effects VAR on ",length(x$call$var.names)," variables",sep="","\n")
+  cat("Fixed effects VAR on ",length(x$call$var.names)," endogenous variables",sep="","\n")
   if(is.null(x$call$unit)) {
     ng <- 1
     nt <- nrow(x$data.used)
@@ -1267,9 +1347,10 @@ cooks.distance.feVAR <- function(model, ...) {
   tab <- cbind(tab, '(maximum)'=apply(tab,1,function(x){
     ifelse(sum(!is.na(x))>0,max(x,na.rm=T),NA)
   }))
-  tabOK <- data.frame(tab)
-  colnames(tabOK) <- c(colnames(tab))
-  tabOK
+  #tabOK <- data.frame(tab)
+  #colnames(tabOK) <- c(colnames(tab))
+  #tabOK
+  tab
   }
 
 # logLik method for class 'feVAR'
@@ -1414,7 +1495,9 @@ predict.feVAR <- function(object, n.ahead=0, unit.id=NULL, newdata=NULL, level=0
           #
           ## <-- prendere variabili esogene da 'newdata'
           #
-          pred <- lapply(object$equations, predict, newdata=dat0, interval="prediction", level=level)
+          suppressWarnings(
+            pred <- lapply(object$equations, predict, newdata=dat0, interval="prediction", level=level)
+            )
           fit[j,nomi] <- sapply(pred[nomi],function(x){x[nrow(x),1]})
           sx[j,nomi] <- sapply(pred[nomi],function(x){x[nrow(x),2]})
           dx[j,nomi] <- sapply(pred[nomi],function(x){x[nrow(x),3]})
@@ -1444,7 +1527,7 @@ predict.feVAR <- function(object, n.ahead=0, unit.id=NULL, newdata=NULL, level=0
       }
     }
   #
-  backFun <- function(tab, diff, bc, quan, dat) {
+  backFun <- function(tab, diff, bc, quan, dat, ymin) {
     pr <- tab[,"mean"]
     se <- (tab[,"mean"]-tab[,"lower"])/quan
     if(diff>0) {
@@ -1461,9 +1544,9 @@ predict.feVAR <- function(object, n.ahead=0, unit.id=NULL, newdata=NULL, level=0
           }
         }
       }
-    tab[,"mean"] <- invBoxCox(pr, bc[2], a=bc[1])
-    tab[,"lower"] <- invBoxCox(pr-quan*se, bc[2], a=bc[1])
-    tab[,"upper"] <- invBoxCox(pr+quan*se, bc[2], a=bc[1])
+    tab[,"mean"] <- invBoxCox(pr, bc[2], a=bc[1], ymin=ymin)
+    tab[,"lower"] <- invBoxCox(pr-quan*se, bc[2], a=bc[1], ymin=ymin)
+    tab[,"upper"] <- invBoxCox(pr+quan*se, bc[2], a=bc[1], ymin=ymin)
     tab
     }
   #
@@ -1479,7 +1562,7 @@ predict.feVAR <- function(object, n.ahead=0, unit.id=NULL, newdata=NULL, level=0
         igr <- names(iprList)
         iprOK <- list()
         for(j in 1:length(igr)) {
-          iprOK[[j]] <- backFun(tab=iprList[[igr[j]]], diff=idiff, bc=ibc, quan=iquan, dat=idatList[[igr[j]]])
+          iprOK[[j]] <- backFun(tab=iprList[[igr[j]]], diff=idiff, bc=ibc, quan=iquan, dat=idatList[[igr[j]]], ymin=min(object$data.orig[,inam],na.rm=T))
           }
         predList[[i]] <- do.call(rbind, iprOK)
         }
@@ -1493,7 +1576,7 @@ predict.feVAR <- function(object, n.ahead=0, unit.id=NULL, newdata=NULL, level=0
         iquan <- qt((1+level)/2,object$equations[[inam]]$df.residual)
         idat <- object$data.orig[subset,inam]
         ipr <- predList[[i]]
-        predList[[i]] <- backFun(tab=ipr, diff=idiff, bc=ibc, quan=iquan, dat=idat)
+        predList[[i]] <- backFun(tab=ipr, diff=idiff, bc=ibc, quan=iquan, dat=idat, ymin=min(object$data.orig[,inam],na.rm=T))
         }
       }
     }
@@ -1592,8 +1675,59 @@ acfCalc <- function(x, unit.id, max.lag, bptest) {
     }
   }
 
+## compute Q matrix (auxiliary)
+#QmatCalc <- function(regList) {
+#  #
+#  auxlag <- lapply(regList, getLags)
+#  p <- max(sapply(auxlag, function(x){max(x[,"lag"])}))
+#  ind <- c()
+#  for(i in 1:p) {
+#    ind <- c(ind, unlist(lapply(auxlag, function(x){
+#      rownames(x[which(x[,"lag"]==i),])
+#      })))
+#    }
+#  ind <- unname(unique(ind))
+#  #
+#  Xlist <- lapply(regList, model.matrix)
+#  auxnames <- unique(unlist(lapply(Xlist,colnames)))
+#  xnames <- c(setdiff(auxnames,ind),ind)
+#  Xlist_new <- list()
+#  for(i in 1:length(Xlist)) {
+#    iX <- Xlist[[i]]
+#    iX_new <- matrix(0,nrow=nrow(iX),ncol=length(xnames))
+#    colnames(iX_new) <- xnames
+#    iX_new[,colnames(iX)] <- iX
+#    Xlist_new[[i]] <- iX_new
+#    }
+#  Xmat <- do.call(rbind,Xlist_new)
+#  Q <- matrix(0,nrow=length(xnames),ncol=length(xnames))
+#  rownames(Q) <- colnames(Q) <- xnames
+#  for(i in 1:nrow(Xmat)) {
+#    Q <- Q+Xmat[i,]%*%t(Xmat[i,])
+#    }
+#  Q/nrow(Xmat)
+#  }
+
+# companion matrix (auxiliary)
+compMat <- function(Beta) {
+  Cmat_up <- do.call(cbind,Beta)
+  colnames(Cmat_up) <- paste0(rep(colnames(Beta[[1]]),length(Beta)),".",rep(1:length(Beta),each=ncol(Beta[[1]])))
+  nc <- ncol(Cmat_up)-nrow(Cmat_up)
+  if(nc>0) {
+    Cmat_low <- matrix(0,nrow=nc,ncol=ncol(Cmat_up))
+    for(i in 1:nc) Cmat_low[i,i] <- 1
+    } else {
+    Cmat_low <- NULL
+    }
+  Cmat <- rbind(Cmat_up,Cmat_low)
+  if(sum(is.na(Cmat))>0) Cmat[which(is.na(Cmat))] <- 0
+  rownames(Cmat) <- colnames(Cmat)
+  Cmat
+  }
+
 # autocorrelation test on residuals
 autocorTest <- function(model, max.lag=NULL) {
+  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'",call.=F)
   res <- residuals(model)
   if(!is.null(model$call$unit)) {
     acf1 <- acfCalc(res[,model$call$var.names,drop=F], unit.id=res[,model$call$unit], max.lag=max.lag, bptest=T)
@@ -1616,19 +1750,50 @@ print.autocorTest.feVAR <- function(x, ...) {
   print(mat)
   }
 
-# companion matrix (auxiliary)
-compMat <- function(Beta) {
-  Cmat_up <- do.call(cbind,Beta)
-  nc <- ncol(Cmat_up)-nrow(Cmat_up)
-  if(nc>0) {
-    Cmat_low <- matrix(0,nrow=nc,ncol=ncol(Cmat_up))
-    for(i in 1:nc) Cmat_low[i,i] <- 1
-    } else {
-    Cmat_low <- NULL
+# granger causality test
+grangerTest <- function(model, from=NULL, to=NULL) {
+  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'",call.=F)
+  modList <- model$equations
+  to <- intersect(to,names(modList))
+  from <- intersect(from,names(modList))
+  if(is.null(to)|length(to)==0) to <- names(modList)
+  if(is.null(from)|length(from)==0) from <- names(modList)
+  #
+  oneGranger <- function(from, to) {
+    mod <- modList[[to]]
+    auxlag <- getLags(mod)
+    xaux <- setdiff(unique(auxlag[,"x"]),to)
+    xnames <- intersect(xaux,from)
+    if(length(xnames)>0) {
+      dat <- mod$model
+      lagnames <- rownames(auxlag[which(auxlag[,"x"]%in%xnames),])
+      auxmod <- lm(formula(paste0(to,"~.")), data=dat[,setdiff(colnames(dat),lagnames),drop=F])
+      anova(auxmod,mod)
+      }
     }
-  Cmat <- rbind(Cmat_up,Cmat_low)
-  rownames(Cmat) <- colnames(Cmat)
-  Cmat
+  #
+  Ftab <- vector("list",length=length(to))
+  pval <- rep(NA,length(to))
+  names(Ftab) <- names(pval) <- to
+  for(i in 1:length(to)) {
+    itab <- oneGranger(from=from, to=to[i])
+    if(!is.null(itab)) {
+      Ftab[[i]] <- itab
+      pval[i] <- Ftab[[i]]$'Pr(>F)'[2]
+      }
+    }
+  gtest <- list(from=from, to=to, F.test=Ftab, p.value=pval)
+  class(gtest) <- "grangerTest.feVAR"
+  gtest
+  #
+  }
+
+# print method for class 'grangerTest.feVAR'
+print.grangerTest.feVAR <- function(x, ...) {
+  cat("Granger causality test","\n","\n")
+  cat("  From: ",paste(x$from,collapse=", "),sep="","\n","\n")
+  cat("  p-values:","\n")
+  print(round(x$p.value,4))
   }
 
 # ACF of residuals (auxiliary)
@@ -1745,13 +1910,14 @@ plot.feVAR <- function(x, type=c("ts","acf","acf2","fitVSres","qqnorm"), var.nam
   add.grid <- add.grid[1]
   if(is.na(add.grid)||(!is.logical(add.grid)|is.null(add.grid))) add.grid <- TRUE 
   if(is.numeric(type)) {
-    type <- intersect(type,1:6)[1]    
+    type <- intersect(type,1:5)[1]    
     } else {
-    type <- intersect(type,c("ts","acf","acf2","qqnorm","fitVSres"))[1]
+    type <- intersect(type,c("ts","acf","acf2","fitVSres","qqnorm"))[1]
     }
   if(is.null(type)||is.na(type)) {
-    type <- 1
-    warning("Argument 'type' contains no valid values: it is set to 'acf'",call.=F)
+    #type <- 1
+    #warning("Argument 'type' contains no valid values: it is set to 'acf'",call.=F)
+    stop("Argument 'type' must be one among: 'ts' (1), 'acf' (2), 'acf2' (3), 'fitVSres' (4), 'qqnorm' (5)")
     }
   if(type=="ts"|type==1) {
     if(is.null(xlab)) xlab <- "time point"
@@ -1944,8 +2110,221 @@ plot.predict.feVAR <- function(x, var.names=NULL, unit.id, newdata=NULL, start=N
     }
   }
 
+# simulate beta matrices (auxiliary)
+simulBeta <- function(model) {
+  #
+  mvnsim <- function(n, mu, S) {
+    p <- length(mu)
+    z <- matrix(rnorm(n*p),nrow=n,ncol=p)
+    W <- chol(S)
+    z%*%W+matrix(rep(mu,n),ncol=p,byrow=T)
+    }
+  #
+  modList <- model$equations
+  xnam <- names(modList)
+  if(is.null(model$Gamma)) exnam <- c() else exnam <- colnames(model$Gamma)
+  allnam <- c(xnam,exnam)
+  nlags <- length(model$Beta)
+  lagList <- lapply(modList, getLags)  
+  betaList <- vector("list",length=nlags)
+  names(betaList) <- 1:nlags
+  for(i in 1:nlags) {
+    imat <- matrix(0,nrow=length(allnam),ncol=length(allnam))
+    rownames(imat) <- colnames(imat) <- allnam
+    betaList[[i]] <- imat
+    }
+  for(i in 1:length(xnam)) {
+    imod <- modList[[xnam[i]]]
+    ilag <- lagList[[xnam[i]]]
+    if(!is.null(ilag)) {
+      istr <- rownames(ilag)
+      isim <- mvnsim(1,imod$coefficients,vcov(imod))[1,]
+      for(j in 1:length(istr)) {
+        ijl <- ilag[j,"lag"]
+        ijx <- ilag[j,"x"]
+        betaList[[ijl]][xnam[i],ijx] <- isim[istr[j]]
+        }
+      auxex <- intersect(names(isim),exnam)
+      if(length(auxex)>0) betaList[[1]][xnam[i],auxex] <- isim[auxex]
+      }
+    }
+  betaList
+  }
+
+# compute Psi matrix (auxiliary)
+PsiCalc <- function(betaList, n.ahead, cumulative, C) {
+  p <- length(betaList)
+  m <- ncol(betaList[[1]])
+  xnam <- colnames(betaList[[1]])
+  Psi <- array(dim=c(n.ahead+1,m,m))
+  dimnames(Psi) <- list(0:n.ahead,xnam,xnam)
+  Psi[1,,] <- C
+  for(j in 1:n.ahead) {
+    psi_j <- matrix(0,nrow=m,ncol=m)
+    ind <- min(j,p)
+    for(s in 1:ind) {
+      psi_j <- psi_j+Psi[j+1-s,,]%*%betaList[[s]]
+      }
+    Psi[j+1,,] <- psi_j
+    }
+  if(cumulative) {
+    apply(Psi,2:3,cumsum)
+    } else {
+    Psi
+    }
+  }
+
+# VMA representation
+VMA <- function(model, n.ahead=10) {
+  if(!is.numeric(n.ahead)) n.ahead <- 10 else n.ahead <- round(max(c(1,n.ahead),na.rm=T))
+  if(is.na(n.ahead)|n.ahead=="Inf") n.ahead <- 10
+  m <- length(model$equations)
+  C <- matrix(0,nrow=m,ncol=m)
+  diag(C) <- rep(1,m)
+  PsiCalc(model$Beta, cumulative=F, n.ahead=n.ahead, C=C)
+  }
+
+# compute impulse response functions
+IRF <- function(model, n.ahead=10, cumulative=FALSE, orthogonal=FALSE, order=NULL, nboot=100, level=0.95) {
+  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'",call.=F)
+  if(!is.numeric(n.ahead)) n.ahead <- 10 else n.ahead <- round(max(c(1,n.ahead),na.rm=T))
+  if(is.na(n.ahead)|n.ahead=="Inf") n.ahead <- 10
+  if(!is.numeric(nboot)) nboot <- 0 else nboot <- round(max(c(0,nboot),na.rm=T))
+  if(!is.numeric(level)) level <- 0.05 else level <- max(0,min(level,1,na.rm=T),na.rm=T)
+  cumulative <- cumulative[1]
+  if(is.na(cumulative)||(!is.logical(cumulative)|is.null(cumulative))) cumulative <- FALSE
+  orthogonal <- orthogonal[1]
+  if(is.na(orthogonal)||(!is.logical(orthogonal)|is.null(orthogonal))) orthogonal <- FALSE
+  xnam <- names(model$equations)
+  m <- length(xnam)
+  betaL <- model$Beta
+  p <- length(betaL)
+  if(is.null(order)) {
+    order <- xnam
+    } else {
+    if(is.numeric(order)) order <- xnam[intersect(order,1:m)]
+    auxord <- intersect(order,xnam)
+    order <- c(auxord,setdiff(xnam,auxord))
+    }
+  #
+  orthoMat <- function(S, order) {
+    xnam <- colnames(S)
+    if(is.null(order)) {
+      P <- t(chol(S))
+      } else {
+      P <- t(chol(S[order,order]))[xnam,xnam]
+      }
+    radD <- diag(diag(P))
+    P%*%solve(radD)
+    }
+  #
+  if(!is.null(model$Gamma)) {
+    allnam <- c(xnam,colnames(model$Gamma))
+    k <- ncol(model$Gamma)
+    betaL[[1]] <- rbind(cbind(betaL[[1]],model$Gamma),matrix(0,nrow=k,ncol=m+k))
+    colnames(betaL[[1]]) <- rownames(betaL[[1]]) <- allnam
+    if(length(betaL)>1) {
+      for(i in 2:length(betaL)) {
+        betaL[[i]] <- rbind(cbind(betaL[[i]],matrix(0,ncol=k,nrow=m)),matrix(0,nrow=k,ncol=m+k))
+        colnames(betaL[[i]]) <- rownames(betaL[[i]]) <- allnam
+        }
+      }
+    if(orthogonal) {
+      C <- rbind(cbind(orthoMat(model$Sigma, order=order),matrix(0,ncol=k,nrow=m)),matrix(0,nrow=k,ncol=m+k))
+      } else {
+      C <- matrix(0,nrow=m+k,ncol=m+k)
+      diag(C) <- rep(1,m+k)
+      }
+    } else {
+    k <- 0
+    allnam <- xnam
+    if(orthogonal) {
+      C <- orthoMat(model$Sigma, order=order)
+      } else {
+      C <- matrix(0,nrow=m,ncol=m)
+      diag(C) <- rep(1,m)
+      }  
+    }
+  irf <- PsiCalc(betaL, n.ahead=n.ahead, cumulative=cumulative, C=C)
+  if(nboot>0) {
+    irf_sim <- array(dim=c(nboot,n.ahead+1,m+k,m+k))
+    dimnames(irf_sim) <- list(NULL,0:n.ahead,allnam,allnam)
+    if(orthogonal) {
+      resMat <- residuals(model)
+      N <- nrow(resMat)
+      for(i in 1:nboot) {
+        ressim <- resMat[sample(1:N,N,replace=T),xnam]
+        covsim <- cov(ressim, use="complete.obs")*(N-1)/N
+        Csim <- orthoMat(covsim, order=order)
+        if(k==0) {
+          CsimOK <- Csim
+          } else {
+          CsimOK <- rbind(cbind(Csim,matrix(0,ncol=k,nrow=m)),matrix(0,nrow=k,ncol=m+k))
+          diag(CsimOK) <- c(diag(Csim),rep(1,k))
+          }
+        irf_sim[i,,,] <- PsiCalc(simulBeta(model), n.ahead=n.ahead, cumulative=cumulative, C=CsimOK)
+        }
+      } else {
+      for(i in 1:nboot) {
+        irf_sim[i,,,] <- PsiCalc(simulBeta(model), n.ahead=n.ahead, cumulative=cumulative, C=C)
+        }
+      }
+    irf_sx <- apply(irf_sim,2:4,quantile,prob=(1-level)/2)
+    irf_dx <- apply(irf_sim,2:4,quantile,prob=(1+level)/2)
+    #irf_serr <- apply(irf_sim,2:4,sd)
+    #z <- qnorm((1+level)/2)
+    #irf_sx <- irf-z*irf_serr
+    #irf_dx <- irf+z*irf_serr
+    } else {
+    irf_sx <- irf_dx <- NULL
+    #
+    #k <- ncol(model$Q)
+    #invQ_try <- tryCatch(solve(model$Q), error=function(e){NULL})
+    #if(is.null(invQ_try)) invQ <- solve(nearPD(model$Q)$mat) else invQ <- invQ_try
+    #invQ <- solve(nearPD(model$Q)$mat)
+    #W <- model$Sigma %x% invQ
+    #irf_serr <- array(0,dim=c(n.ahead+1,m,m))
+    #for(h in 1:n.ahead) {
+    #  G_h <- matrix(0,nrow=m^2,ncol=m*k)
+    #  for(i in 1:h) {
+    #    iGh <- matrix(0,nrow=m,ncol=k-m*p)
+    #    for(j in 0:(p-1)) {
+    #      if(h-i-j+1>0) {
+    #        ijPhi <- t(irf[h-i-j+1,,])
+    #        } else {
+    #        ijPhi <- matrix(0,nrow=m,ncol=m)
+    #        }
+    #      iGh <- cbind(iGh,ijPhi)
+    #      }
+    #    G_h <- G_h+irf[i,,]%x%iGh
+    #    }
+    #  S_h <- G_h%*%W%*%t(G_h)/nrow(model$data.used)
+    #  irf_serr[h+1,,] <- matrix(sqrt(diag(S_h)),nrow=m,ncol=m,byrow=T)
+    #z <- qnorm((1+level)/2)
+    #irf_sx <- irf-z*irf_serr
+    #irf_dx <- irf+z*irf_serr
+    #
+    }
+  obj <- list(irf=irf, irf_sx=irf_sx, irf_dx=irf_dx)
+  #irf_se=irf_serr, 
+  attr(obj,"level") <- level
+  attr(obj,"cumulative") <- cumulative
+  attr(obj,"orthogonal") <- orthogonal
+  class(obj) <- "IRF.feVAR"
+  obj
+  }
+
+# print method for class 'IRF.feVAR'
+print.IRF.feVAR <- function(x, ...) {
+  cat("Impulse response functions","\n")
+  cat("  number of endogenous variables: ",dim(x$irf)[2],"\n",sep="")
+  cat("  number of steps ahead: ",dim(x$irf)[1]-1,"\n",sep="")
+  cat("  cumulative: ",ifelse(attr(x,"cumulative"),"yes","no"),"\n",sep="")
+  cat("  orthogonal: ",ifelse(attr(x,"orthogonal"),"yes","no"),"\n",sep="")
+  }
+
 # plot method for class 'IRF.feVAR'
-plot.IRF.feVAR <- function(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, ylim=NULL, add.grid=TRUE, add.titles=FALSE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
+plot.IRF.feVAR <- function(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, ylim=NULL, add.grid=TRUE, add.titles=TRUE, cex.points=0, mfrow=NULL, mar=c(3.5,3.5,2,2), mgp=c(2.3,0.8,0), ...) {
   nomi <- dimnames(x[[1]])[[2]]
   if(is.null(from)) {
     from <- nomi
@@ -1986,10 +2365,14 @@ plot.IRF.feVAR <- function(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, yli
   add.titles <- add.titles[1]
   if(is.na(add.titles)||(!is.logical(add.titles)|is.null(add.titles))) add.titles <- FALSE
   #
-  onePlot <- function(x1, x2, ...) {
-    irfOK <- x$irf[1:(n.ahead+1),x1,x2]
-    irfOK_sx <- x$irf_sx[1:(n.ahead+1),x1,x2]
-    irfOK_dx <- x$irf_dx[1:(n.ahead+1),x1,x2]
+  onePlot <- function(from, to, ...) {
+    irfOK <- x$irf[1:(n.ahead+1),to,from]
+    if(is.null(x$irf_sx)) {
+      irfOK_sx <- irfOK_dx <- irfOK 
+      } else {
+      irfOK_sx <- x$irf_sx[1:(n.ahead+1),to,from]
+      irfOK_dx <- x$irf_dx[1:(n.ahead+1),to,from]
+      }
     if(is.null(ylim)) ylim <- range(c(irfOK_sx,irfOK_dx))
     lseq <- 0:n.ahead
     plot(lseq, irfOK, type="n", ylim=ylim, ...)
@@ -2012,117 +2395,15 @@ plot.IRF.feVAR <- function(x, from=NULL, to=NULL, n.ahead=NULL, labels=NULL, yli
     for(j in 1:length(to)) {
       if(from[i] %in% names(labels)) ijlab1 <- labels[from[i]] else ijlab1 <- from[i]
       if(to[j] %in% names(labels)) ijlab2 <- labels[to[j]] else ijlab2 <- to[j]
-      if(add.titles) ijtit <- paste0("From: ",ijlab1," | To: ",ijlab2) else ijtit <- NULL
-      onePlot(from[i], to[j], xlab=paste0(ijlab1," (lag)"), ylab=ijlab2, main=ijtit, ...)
-      }
-    }
-  }
-
-# simulate multivariate normal (auxiliary)
-mvnsim <- function(n, mu, S) {
-  p <- length(mu)
-  z <- matrix(rnorm(n*p),nrow=n,ncol=p)
-  W <- chol(S)
-  z%*%W+matrix(rep(mu,n),ncol=p,byrow=T)
-  }
-
-# simulate beta matrices (auxiliary)
-simulBeta <- function(model) {
-  modList <- model$equations
-  nlags <- length(model$Beta)
-  lagList <- lapply(modList, getLags)
-  xnam <- names(modList)
-  betaList <- vector("list",length=nlags)
-  names(betaList) <- 1:nlags
-  for(i in 1:nlags) {
-    imat <- matrix(0,nrow=length(xnam),ncol=length(xnam))
-    rownames(imat) <- colnames(imat) <- xnam
-    betaList[[i]] <- imat
-    }
-  for(i in 1:length(xnam)) {
-    imod <- modList[[xnam[i]]]
-    ilag <- lagList[[xnam[i]]]
-    if(!is.null(ilag)) {
-      istr <- rownames(ilag)
-      isim <- mvnsim(1,imod$coefficients,vcov(imod))[1,]
-      for(j in 1:length(istr)) {
-        ijl <- ilag[j,"lag"]
-        ijx <- ilag[j,"x"]
-        betaList[[ijl]][ijx,xnam[i]] <- isim[istr[j]]
+      if(add.titles) {
+        ijtit <- paste0(ijlab1," => ",ijlab2)
+        ijxlab <- "lag"
+        } else {
+        ijtit <- NULL
+        ijxlab <- paste0(ijlab1," (lag)")
         }
+      onePlot(from=from[i], to=to[j], xlab=ijxlab, ylab=ijlab2, main=ijtit, ...)
       }
-    }
-  betaList
-  }
-
-# compute impulse response functions
-IRF <- function(model, n.ahead=10, nboot=100, cumulative=FALSE, level=0.95, quiet=FALSE) {
-  if(!identical(class(model),"feVAR")) stop("Argument 'model' must be an object of class 'feVAR'",call.=F)
-  if(!is.numeric(n.ahead)) n.ahead <- 10 else n.ahead <- round(max(c(1,n.ahead),na.rm=T))
-  if(is.na(n.ahead)|n.ahead=="Inf") n.ahead <- 10
-  if(!is.numeric(nboot)) nboot <- 0 else nboot <- round(max(c(0,nboot),na.rm=T))
-  if(!is.numeric(level)) level <- 0.05 else level <- max(0,min(level,1,na.rm=T),na.rm=T)
-  cumulative <- cumulative[1]
-  if(is.na(cumulative)||(!is.logical(cumulative)|is.null(cumulative))) cumulative <- FALSE
-  quiet <- quiet[1]
-  if(is.na(quiet)||(!is.logical(quiet)|is.null(quiet))) quiet <- FALSE
-  #
-  Func <- function(betaList) {
-    p <- length(betaList)
-    Psi <- array(dim=c(n.ahead+1,m,m))
-    dimnames(Psi) <- list(0:n.ahead,xnam,xnam)
-    Psi[1,,] <- matrix(0,nrow=m,ncol=m)
-    diag(Psi[1,,]) <- 1
-    for(j in 1:n.ahead) {
-      psi_j <- 0
-      for(s in 1:min(j,p)) {
-        psi_j <- psi_j+Psi[j+1-s,,]%*%betaList[[s]]
-        }
-      Psi[j+1,,] <- psi_j
-      }
-    if(cumulative) {
-      apply(Psi,2:3,cumsum)
-      } else {
-      Psi
-      }
-    }
-  #
-  m <- length(model$equations)
-  xnam <- names(model$equations)
-  irf <- Func(model$Beta)
-  if(nboot>0) {
-    irf_sim <- array(dim=c(nboot,n.ahead+1,m,m))
-    dimnames(irf_sim) <- list(NULL,0:n.ahead,xnam,xnam)
-    for(i in 1:nboot) {
-      if(quiet==F) {
-        cat("\r","Bootstrap resample ",i,"/",nboot,sep="")
-        flush.console()
-        }
-      irf_sim[i,,,] <- Func(simulBeta(model))
-      }
-    irf_sx <- apply(irf_sim,2:4,quantile,prob=(1-level)/2)
-    irf_dx <- apply(irf_sim,2:4,quantile,prob=(1+level)/2)
-    if(quiet==F) cat("\n")
-    obj <- list(irf=irf, irf_sx=irf_sx, irf_dx=irf_dx)
-    attr(obj,"level") <- level
-    } else {
-    obj <- list(irf=irf)
-    }
-  attr(obj,"cumulative") <- cumulative
-  class(obj) <- "IRF.feVAR"
-  obj
-  }
-
-# print method for class 'IRF.feVAR'
-print.IRF.feVAR <- function(x, ...) {
-  cat("Impulse response functions","\n")
-  cat("  number of variables: ",dim(x$irf)[2],"\n",sep="")
-  cat("  number of steps ahead: ",dim(x$irf)[1]-1,"\n",sep="")
-  cat("  cumulative: ",ifelse(attr(x,"cumulative"),"yes","no"),"\n",sep="")
-  if(length(x)>1) {
-    cat("  confidence intervals: yes (level ",attr(x,"level"),")","\n",sep="")
-    } else {
-    cat("  confidence intervals: no","\n")
     }
   }
 
@@ -2183,7 +2464,7 @@ forecastError <- function(model, n.ahead=1, quiet=FALSE) {
       ijpr <- do.call(cbind, lapply(ipr, function(x){
         tt <- unique(x[,model$call$time])
         x[which(x[,model$call$time]==tt[j]),"mean"]
-      }))
+        }))
       pList[[j]][which(obsdat[,model$call$time]==tval[i+j]),] <- ijpr
       }
     }

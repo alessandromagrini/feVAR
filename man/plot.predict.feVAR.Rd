@@ -11,7 +11,7 @@
 \arguments{
   \item{x}{Object of class \code{predict.feVAR}.}
   \item{var.names}{Vector indicating the names or the numerical identifiers of the endogenous variables for which predictions must be displayed.}
-  \item{unit.id}{Name or identificative number of one unit of observation for which predictions must be displayed. Ignored in case of a single unit of observation.}
+  \item{unit.id}{Name or numerical identifier of a single cross-sectional unit for which predictions must be displayed. Ignored if there is only one cross-sectional unit.}
   \item{newdata}{Object of class \code{data.frame} containing new observations to be added to the graphics. If \code{NULL} (the default), no further observations are added besides the existing ones. Ignored if \code{x} contains in-sample predictions.}
   \item{start}{Time point from which the graphic must start. If \code{NULL} (the default), the whole observed time series is displayed.}
   \item{ylim}{Numeric vector of length 2 indicating the limits of the y-axis.}

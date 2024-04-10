@@ -2,12 +2,12 @@ Package: feVAR
 Type: Package
 Title: Fixed Effects Vector Autoregressive Models
 Version: 0.1.1
-Date: 2023-08-21
+Date: 2024-04-11
 Author: Alessandro Magrini
 Maintainer: Alessandro Magrini <alessandro.magrini@unifi.it>
-Description: Estimation and analysis of fixed effects vector autoregressive models. The package implements the bootstrap bias correction for ordinary least squares estimation proposed by Everaert & Pozzi (2007) and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
+Description: Estimation and analysis of fixed effects vector autoregressive models. The package implements the half panel Jaccknife bias correction (Dhaene & Jochmans, 2015) to obtain unbiased estimates, and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
 Depends: R (>= 3.5.0)
 Imports: graphics, stats, MASS
 License: GPL-2
 NeedsCompilation: no
-Packaged: 2023-08-21 13:53:42 UTC; Alessandro
+Packaged: 2024-04-10 22:31:57 UTC; Alessandro
