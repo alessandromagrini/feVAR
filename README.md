@@ -1,7 +1,7 @@
 # feVAR
 __Estimation and analysis of fixed effects vector autoregressive models__
 
-`feVAR` is an R package for estimation and analysis of fixed effects Vector AutoRegressive (feVAR) models (see, e.g., Holtz-Eakin et al., 1988). The package implements the half panel jackknife bias correction (Dhaene & Jochmans, 2015) to obtain unbiased estimates and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
+`feVAR` is an R package for estimation and analysis of fixed effects Vector AutoRegressive (feVAR) models (see, e.g., Holtz-Eakin et al., 1988). The package implements the half panel jackknife bias correction (Dhaene & Jochmans, 2015) to obtain unbiased estimates, and the Expectation-Maximization (EM) algorithm (Dempster et al., 1977) to perform estimation in case of missing values. Several numerical and graphical tools to analyse the estimated models are available. Both panel, even unbalanced, and non-panel data are allowed.
 
 References:
 - Holtz-Eakin D., Newey W., Rosen H.S. (1988). Estimating vector autoregressions with panel data. _Econometrica_, 56(6), 1371-1395. DOI: <a href="https://doi.org/10.2307/1913103">10.2307/1913103</a>
